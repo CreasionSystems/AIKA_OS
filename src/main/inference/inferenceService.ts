@@ -15,6 +15,18 @@ import {
 } from "@shared/writing/writingModes";
 
 /**
+ * IPC ハンドラが依存する最小インターフェース。
+ * 具象 InferenceService を直接束縛せず、テストでの差し替えと
+ * 将来の getJob -> JobView 射影への置換余地を残す。
+ */
+export interface InferenceIpcService {
+  generateText(req: WritingRequest): Promise<TextGenerationResult>;
+  submitImageJob(req: ImageJobRequest): string;
+  submitVideoJob(req: VideoJobRequest): string;
+  getJob(id: string): Job | undefined;
+}
+
+/**
  * InferenceService — InferencePort と JobQueue を結線する中核サービス。
  *
  * メディアジョブ (画像 / 動画) を submit* で投入すると JobQueue にジョブ化され、
@@ -24,7 +36,7 @@ import {
  * 注意: JobQueue の jobId と、アダプタが返す MediaJobResult.jobId は別系統。
  *       前者はキュー上の識別子、後者は生成バックエンド上の識別子。
  */
-export class InferenceService {
+export class InferenceService implements InferenceIpcService {
   constructor(
     private readonly port: InferencePort,
     private readonly queue: JobQueue,
