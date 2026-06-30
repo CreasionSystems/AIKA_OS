@@ -104,3 +104,44 @@ describe("WritingPanel", () => {
     }
   });
 });
+
+describe("WritingPanel (状態サマリー live region)", () => {
+  it("サマリーは role=status / aria-live=polite / aria-atomic=true で初期から『未生成』", () => {
+    installAikaMock(async () => okResult);
+    render(<WritingPanel />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveAttribute("aria-atomic", "true");
+    expect(status).toHaveTextContent("未生成");
+  });
+
+  it("生成後にサマリーが『生成しました』になり、本文は region 外", async () => {
+    installAikaMock(async () => okResult);
+    const user = userEvent.setup();
+    render(<WritingPanel />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "x");
+    await user.click(screen.getByRole("button", { name: "生成" }));
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("生成しました");
+    expect(status).not.toHaveTextContent("生成された文章です");
+    expect(screen.getByText("生成された文章です")).toBeInTheDocument();
+  });
+
+  it("エラーは alert に出し、status には混ぜない", async () => {
+    installAikaMock(async () => {
+      throw new WritingValidationError([
+        { code: "EMPTY_PROMPT", message: "プロンプトが空です。" },
+      ]);
+    });
+    const user = userEvent.setup();
+    render(<WritingPanel />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "x");
+    await user.click(screen.getByRole("button", { name: "生成" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/プロンプト/);
+    expect(screen.getByRole("status")).not.toHaveTextContent("プロンプトが空です");
+  });
+});

@@ -99,7 +99,7 @@ body {
   margin-top: var(--gap);
 }
 
-output {
+.generated-output {
   display: block;
   margin-top: var(--gap);
   padding: var(--gap);

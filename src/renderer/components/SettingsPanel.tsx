@@ -26,6 +26,18 @@ function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** live region 用の短い状態サマリー。 */
+function summarize(phase: Phase): string {
+  switch (phase) {
+    case "saving":
+      return "保存中…";
+    case "saved":
+      return "保存しました";
+    default:
+      return "未保存";
+  }
+}
+
 export function SettingsPanel() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -117,7 +129,11 @@ export function SettingsPanel() {
         </button>
       </form>
 
-      {phase === "saved" && <p>保存しました</p>}
+      {/* 短い状態サマリーのみ live region に置く。 */}
+      <p role="status" aria-live="polite" aria-atomic="true">
+        {summarize(phase)}
+      </p>
+
       {error !== null && <p role="alert">{error}</p>}
     </section>
   );

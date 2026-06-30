@@ -22,6 +22,12 @@ type Status = "idle" | "running" | "error";
 
 const MODE_OPTIONS = Object.values(WRITING_MODES);
 
+/** live region 用の短い状態サマリー (生成本文は含めない)。 */
+function summarize(status: Status, hasResult: boolean): string {
+  if (status === "running") return "生成中…";
+  return hasResult ? "生成しました" : "未生成";
+}
+
 export function WritingPanel() {
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<WritingMode>("general");
@@ -75,12 +81,19 @@ export function WritingPanel() {
         </button>
       </form>
 
+      {/* 短い状態サマリーのみ live region に置く (生成本文は含めない)。 */}
+      <p role="status" aria-live="polite" aria-atomic="true">
+        {summarize(status, result !== null)}
+      </p>
+
       {error !== null && (
         <p role="alert">{error}</p>
       )}
 
       {result !== null && (
-        <output aria-label="生成結果">{result}</output>
+        <div className="generated-output" aria-label="生成結果">
+          {result}
+        </div>
       )}
     </section>
   );
