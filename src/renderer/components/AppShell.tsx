@@ -3,18 +3,20 @@ import { WritingPanel } from "./WritingPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { UpdatePanel } from "./UpdatePanel";
 import { CodingPanel } from "./CodingPanel";
+import { MediaPanel } from "./MediaPanel";
 
 /**
- * 画面シェル。文章作成 / 設定 / 更新 / コーディング をタブで切り替える。
+ * 画面シェル。文章作成 / 設定 / 更新 / コーディング / メディア をタブで切り替える。
  * 目的は導線整理であり、見た目の作り込みは後続。
  */
-type TabKey = "writing" | "settings" | "update" | "coding";
+type TabKey = "writing" | "settings" | "update" | "coding" | "media";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "writing", label: "文章作成" },
   { key: "settings", label: "設定" },
   { key: "update", label: "更新" },
   { key: "coding", label: "コーディング" },
+  { key: "media", label: "メディア" },
 ];
 
 function renderPanel(tab: TabKey) {
@@ -27,6 +29,8 @@ function renderPanel(tab: TabKey) {
       return <UpdatePanel />;
     case "coding":
       return <CodingPanel />;
+    case "media":
+      return <MediaPanel />;
   }
 }
 

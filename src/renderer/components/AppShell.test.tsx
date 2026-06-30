@@ -40,9 +40,9 @@ afterEach(() => {
 });
 
 describe("ナビ構造", () => {
-  it("4つのタブを持つ", () => {
+  it("5つのタブを持つ", () => {
     render(<AppShell />);
-    for (const name of ["文章作成", "設定", "更新", "コーディング"]) {
+    for (const name of ["文章作成", "設定", "更新", "コーディング", "メディア"]) {
       expect(screen.getByRole("tab", { name })).toBeInTheDocument();
     }
   });
@@ -77,6 +77,11 @@ describe("ナビ構造", () => {
     await user.click(screen.getByRole("tab", { name: "コーディング" }));
     expect(
       screen.getByRole("heading", { name: "コーディング" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "メディア" }));
+    expect(
+      screen.getByRole("heading", { name: "メディア" }),
     ).toBeInTheDocument();
   });
 });
@@ -129,9 +134,9 @@ describe("タブのキーボード操作 (ARIA)", () => {
     screen.getByRole("tab", { name: "文章作成" }).focus();
     await user.keyboard("{ArrowLeft}");
 
-    const codingTab = screen.getByRole("tab", { name: "コーディング" });
-    expect(codingTab).toHaveAttribute("aria-selected", "true");
-    expect(codingTab).toHaveFocus();
+    const lastTab = screen.getByRole("tab", { name: "メディア" });
+    expect(lastTab).toHaveAttribute("aria-selected", "true");
+    expect(lastTab).toHaveFocus();
   });
 
   it("Home / End で先頭・末尾へ移動する", async () => {
@@ -140,9 +145,7 @@ describe("タブのキーボード操作 (ARIA)", () => {
     screen.getByRole("tab", { name: "文章作成" }).focus();
 
     await user.keyboard("{End}");
-    expect(
-      screen.getByRole("tab", { name: "コーディング" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "メディア" })).toHaveFocus();
 
     await user.keyboard("{Home}");
     expect(screen.getByRole("tab", { name: "文章作成" })).toHaveFocus();
