@@ -4,6 +4,8 @@
  * 状態遷移: queued -> running -> succeeded | failed
  *
  * 各ジョブは独立に処理される (タスクは Promise を返す関数)。
+ * 現状は同時実行数の上限なし。将来 GPU 負荷に応じて maxConcurrency を
+ * 導入する余地を残す (process() の起動を内部スケジューラ経由にする)。
  * 推論基盤 (InferencePort) のメディアジョブ等、非同期処理を統一的に扱う土台。
  *
  * now / idFactory を注入可能にし、タイムスタンプと ID を決定的にテストできる。
