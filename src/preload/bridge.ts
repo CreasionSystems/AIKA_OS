@@ -7,6 +7,7 @@ import type {
 } from "@shared/inference/port";
 import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
+import type { UpdateState } from "@main/update/updateManager";
 
 /**
  * preload ブリッジ。
@@ -44,6 +45,8 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.getSettings) as Promise<AppSettings>,
     saveSettings: (patch: Partial<AppSettings>) =>
       invoke(IPC_CHANNELS.saveSettings, patch) as Promise<AppSettings>,
+    checkUpdate: () =>
+      invoke(IPC_CHANNELS.checkUpdate) as Promise<UpdateState>,
   };
 }
 

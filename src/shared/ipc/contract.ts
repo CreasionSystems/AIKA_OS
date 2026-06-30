@@ -1,4 +1,5 @@
 import type { Job } from "@main/jobs/jobQueue";
+import type { UpdateState } from "@main/update/updateManager";
 import type {
   ImageJobRequest,
   TextGenerationResult,
@@ -20,6 +21,7 @@ export const IPC_CHANNELS = {
   getJob: "aika:jobs:getJob",
   getSettings: "aika:settings:get",
   saveSettings: "aika:settings:save",
+  checkUpdate: "aika:update:check",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -35,4 +37,5 @@ export interface AikaApi {
   getJob(id: string): Promise<Job | undefined>;
   getSettings(): Promise<AppSettings>;
   saveSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
+  checkUpdate(): Promise<UpdateState>;
 }

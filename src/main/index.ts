@@ -3,6 +3,8 @@ import path from "node:path";
 import { createSecureWebPreferences } from "./security/webPreferences";
 import { registerInferenceIpc } from "./ipc/registerInferenceIpc";
 import { registerSettingsIpc } from "./ipc/registerSettingsIpc";
+import { registerUpdateIpc } from "./ipc/registerUpdateIpc";
+import { UpdateManager, FakeUpdateChecker } from "./update/updateManager";
 import { InferenceService } from "./inference/inferenceService";
 import { DummyInferenceAdapter } from "./inference/dummyInferenceAdapter";
 import { JobQueue } from "./jobs/jobQueue";
@@ -42,6 +44,8 @@ function createMainWindow(): BrowserWindow {
 app.whenReady().then(() => {
   registerInferenceIpc(ipcMain, buildInferenceService());
   registerSettingsIpc(ipcMain, buildSettingsService());
+  // 当面は Fake チェッカ (最新を返す)。実チェッカは後続で差し替える。
+  registerUpdateIpc(ipcMain, new UpdateManager(new FakeUpdateChecker(null)));
   createMainWindow();
 
   app.on("activate", () => {

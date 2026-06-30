@@ -40,6 +40,7 @@ describe("createAikaApi: 公開面の最小性", () => {
         "saveSettings",
         "submitImageJob",
         "submitVideoJob",
+        "checkUpdate",
       ].sort(),
     );
   });
@@ -108,6 +109,14 @@ describe("createAikaApi: channel への委譲と素通し", () => {
     expect(calls[0]?.channel).toBe(IPC_CHANNELS.saveSettings);
     expect(calls[0]?.args).toEqual([{ theme: "dark" }]);
   });
+
+  it("checkUpdate は引数なしで内部 channel へ委譲する", async () => {
+    const { invoke, calls } = makeInvokeSpy();
+    const api = createAikaApi(invoke);
+    await api.checkUpdate();
+    expect(calls[0]?.channel).toBe(IPC_CHANNELS.checkUpdate);
+    expect(calls[0]?.args).toEqual([]);
+  });
 });
 
 describe("exposeAikaApi: contextBridge への最小公開", () => {
@@ -131,6 +140,7 @@ describe("exposeAikaApi: contextBridge への最小公開", () => {
         "saveSettings",
         "submitImageJob",
         "submitVideoJob",
+        "checkUpdate",
       ].sort(),
     );
   });
