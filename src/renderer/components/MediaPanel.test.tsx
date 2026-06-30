@@ -7,7 +7,8 @@ import type { Job } from "@main/jobs/jobQueue";
 
 /**
  * メディアタブ (画像ジョブ) の契約テスト。
- * 投入 (submitImageJob) -> 状態取得 (getJob) -> 状態 / 生成物表示。
+ * 投入 (submitImageJob) -> 自動ポーリング (getJob) -> 状態 / 生成物表示。
+ * sleep を注入して決定的に検証する。
  */
 function installAikaMock(over: {
   submitImageJob?: AikaApi["submitImageJob"];
@@ -31,7 +32,11 @@ function installAikaMock(over: {
   return { submitImageJob, getJob };
 }
 
+/** 注入用: 待たない sleep。 */
+const instantSleep = async () => {};
+
 const queuedJob: Job = { id: "job-1", state: "queued", createdAt: 1 };
+const runningJob: Job = { id: "job-1", state: "running", createdAt: 1, startedAt: 2 };
 const succeededJob: Job = {
   id: "job-1",
   state: "succeeded",
@@ -45,6 +50,24 @@ const succeededJob: Job = {
     artifacts: ["/var/lib/aika/artifacts/media-1.png"],
   },
 };
+const failedJob: Job = {
+  id: "job-1",
+  state: "failed",
+  createdAt: 1,
+  startedAt: 2,
+  finishedAt: 3,
+  error: "backend exploded",
+};
+
+/** 呼び出しごとに配列の次要素 (末尾以降は最後の要素) を返す getJob。 */
+function seqGetJob(jobs: Job[]): AikaApi["getJob"] {
+  let i = 0;
+  return async () => {
+    const j = jobs[Math.min(i, jobs.length - 1)];
+    i += 1;
+    return j;
+  };
+}
 
 beforeEach(() => {
   delete (window as { aika?: unknown }).aika;
@@ -54,57 +77,68 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("MediaPanel", () => {
-  it("投入で submitImageJob を呼び、jobId と状態を表示する", async () => {
+describe("MediaPanel (自動ポーリング)", () => {
+  it("投入で submitImageJob を呼び、自動ポーリングで完了まで進む", async () => {
     const { submitImageJob, getJob } = installAikaMock({
-      getJob: async () => queuedJob,
+      getJob: seqGetJob([queuedJob, runningJob, succeededJob]),
     });
     const user = userEvent.setup();
-    render(<MediaPanel />);
+    render(<MediaPanel sleep={instantSleep} />);
 
     await user.type(screen.getByLabelText("プロンプト"), "a cat");
     await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
 
     expect(submitImageJob).toHaveBeenCalledWith({ prompt: "a cat" });
-    expect(getJob).toHaveBeenCalledWith("job-1");
-    expect(await screen.findByText(/job-1/)).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("待機中");
-  });
-
-  it("更新で getJob を再取得し、完了と生成物を表示する", async () => {
-    let calls = 0;
-    installAikaMock({
-      getJob: async () => {
-        calls += 1;
-        return calls === 1 ? queuedJob : succeededJob;
-      },
-    });
-    const user = userEvent.setup();
-    render(<MediaPanel />);
-
-    await user.type(screen.getByLabelText("プロンプト"), "a cat");
-    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
-    await screen.findByText(/job-1/);
-
-    await user.click(screen.getByRole("button", { name: "状態を更新" }));
-
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
     );
+    expect(getJob).toHaveBeenCalledWith("job-1");
     expect(
       screen.getByText("/var/lib/aika/artifacts/media-1.png"),
     ).toBeInTheDocument();
   });
 
+  it("failed で停止し『失敗しました』を表示する (生成物なし)", async () => {
+    installAikaMock({ getJob: seqGetJob([queuedJob, failedJob]) });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "x");
+    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("失敗しました"),
+    );
+    expect(screen.queryByLabelText("生成物")).not.toBeInTheDocument();
+  });
+
+  it("完了後も『状態を更新』で再取得できる", async () => {
+    const { getJob } = installAikaMock({
+      getJob: seqGetJob([succeededJob]),
+    });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "x");
+    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+    );
+
+    const callsBefore = getJob.mock.calls.length;
+    await user.click(screen.getByRole("button", { name: "状態を更新" }));
+    expect(getJob.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
   it("未投入時は更新ボタンが無効", () => {
     installAikaMock({});
-    render(<MediaPanel />);
+    render(<MediaPanel sleep={instantSleep} />);
     expect(screen.getByRole("button", { name: "状態を更新" })).toBeDisabled();
   });
 
   it("状態サマリーは role=status / polite / atomic で初期から『未投入』", () => {
     installAikaMock({});
-    render(<MediaPanel />);
+    render(<MediaPanel sleep={instantSleep} />);
     const status = screen.getByRole("status");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(status).toHaveAttribute("aria-atomic", "true");
@@ -118,7 +152,7 @@ describe("MediaPanel", () => {
       },
     });
     const user = userEvent.setup();
-    render(<MediaPanel />);
+    render(<MediaPanel sleep={instantSleep} />);
 
     await user.type(screen.getByLabelText("プロンプト"), "x");
     await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
