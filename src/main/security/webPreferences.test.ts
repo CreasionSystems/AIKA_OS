@@ -24,8 +24,13 @@ describe("createSecureWebPreferences", () => {
     expect(createSecureWebPreferences().nodeIntegration).toBe(false);
   });
 
-  it("sandbox を有効化する (sandbox = true)", () => {
+  it("デフォルト方針として sandbox を有効化する (上書き可)", () => {
+    // sandbox はハード必須ではなく安全デフォルト (方針レベル)。
     expect(createSecureWebPreferences().sandbox).toBe(true);
+  });
+
+  it("sandbox は明示的に無効化できる (方針の上書き)", () => {
+    expect(createSecureWebPreferences({ sandbox: false }).sandbox).toBe(false);
   });
 
   it("preload スクリプトの絶対パスを要求する", () => {
@@ -75,7 +80,7 @@ describe("assertSecureWebPreferences", () => {
     ).toThrow(/nodeIntegration/);
   });
 
-  it("sandbox が false の設定を拒否する", () => {
+  it("sandbox が false でも拒否しない (方針レベルのため強制しない)", () => {
     expect(() =>
       assertSecureWebPreferences({
         contextIsolation: true,
@@ -83,7 +88,7 @@ describe("assertSecureWebPreferences", () => {
         sandbox: false,
         preload: "/abs/path/preload.js",
       }),
-    ).toThrow(/sandbox/);
+    ).not.toThrow();
   });
 
   it("preload が未指定/相対パスの設定を拒否する", () => {
