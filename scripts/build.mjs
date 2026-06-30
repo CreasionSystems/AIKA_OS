@@ -1,8 +1,8 @@
 import * as esbuild from "esbuild";
-import { cpSync, mkdirSync } from "node:fs";
+import { build as viteBuild } from "vite";
 
 /**
- * Electron の main / preload を CJS にバンドルし、renderer の静的資産を配置する。
+ * Electron の main / preload を CJS にバンドルし、renderer (React) を Vite でビルドする。
  * tsconfig の paths (@main/@shared 等) は esbuild が解決する。
  */
 const common = {
@@ -27,7 +27,6 @@ await esbuild.build({
   outfile: "dist/preload/index.cjs",
 });
 
-mkdirSync("dist/renderer", { recursive: true });
-cpSync("src/renderer/index.html", "dist/renderer/index.html");
+await viteBuild({ configFile: "vite.renderer.config.ts" });
 
 console.log("build complete: dist/main, dist/preload, dist/renderer");

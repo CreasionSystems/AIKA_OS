@@ -22,6 +22,11 @@ test("smoke: 起動 -> 最初のウィンドウ -> window.aika.generateText", as
   const page = await app.firstWindow();
   expect(page).toBeTruthy();
 
+  // React UI がマウントされる (CSP 配下で bundle が読み込めること)
+  await expect(page.getByRole("heading", { name: "文章作成" })).toBeVisible({
+    timeout: 15_000,
+  });
+
   // preload による window.aika の公開を待つ
   await expect
     .poll(() => page.evaluate(() => typeof window.aika?.generateText), {

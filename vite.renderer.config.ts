@@ -1,10 +1,16 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
+/**
+ * renderer (React) 専用の Vite ビルド設定。
+ * base: "./" で file:// 読み込みに対応し、dist/renderer へ出力する。
+ */
 export default defineConfig({
+  root: "src/renderer",
+  base: "./",
   plugins: [react()],
   resolve: {
     alias: {
@@ -14,11 +20,8 @@ export default defineConfig({
       "@shared": r("./src/shared"),
     },
   },
-  test: {
-    globals: true,
-    environment: "node",
-    environmentMatchGlobs: [["**/*.test.tsx", "jsdom"]],
-    setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  build: {
+    outDir: r("./dist/renderer"),
+    emptyOutDir: true,
   },
 });
