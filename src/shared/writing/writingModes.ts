@@ -107,6 +107,19 @@ export type WritingValidationResult =
   | { ok: true }
   | { ok: false; violations: WritingViolation[] };
 
+/** 文章作成リクエストの検証失敗。違反明細を保持する。 */
+export class WritingValidationError extends Error {
+  readonly violations: WritingViolation[];
+
+  constructor(violations: WritingViolation[]) {
+    super(
+      `文章作成リクエストが不正です: ${violations.map((v) => v.code).join(", ")}`,
+    );
+    this.name = "WritingValidationError";
+    this.violations = violations;
+  }
+}
+
 /**
  * 入力バリデーション + 禁止条件チェック。
  * 全違反を集約して返す (最初の1件で打ち切らない)。

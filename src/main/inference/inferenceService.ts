@@ -3,9 +3,16 @@ import type {
   ImageJobRequest,
   ImageJobResult,
   InferencePort,
+  TextGenerationResult,
   VideoJobRequest,
   VideoJobResult,
 } from "@shared/inference/port";
+import {
+  WritingValidationError,
+  normalizeWritingRequest,
+  validateWritingRequest,
+  type WritingRequest,
+} from "@shared/writing/writingModes";
 
 /**
  * InferenceService — InferencePort と JobQueue を結線する中核サービス。
@@ -31,6 +38,26 @@ export class InferenceService {
   /** 動画生成ジョブを投入し、キューの jobId を返す。 */
   submitVideoJob(req: VideoJobRequest): string {
     return this.queue.enqueue<VideoJobResult>(() => this.port.runVideoJob(req));
+  }
+
+  /**
+   * 文章作成: validate -> normalize -> port.generateText。
+   * 検証に失敗した場合は WritingValidationError を投げ、Port は呼ばない。
+   *
+   * 同期的な request/response のため JobQueue は経由しない。
+   */
+  async generateText(req: WritingRequest): Promise<TextGenerationResult> {
+    const validation = validateWritingRequest(req);
+    if (!validation.ok) {
+      throw new WritingValidationError(validation.violations);
+    }
+    const normalized = normalizeWritingRequest(req);
+    return this.port.generateText({
+      prompt: normalized.prompt,
+      mode: normalized.mode,
+      maxTokens: normalized.maxTokens,
+      temperature: normalized.temperature,
+    });
   }
 
   /** ジョブ状態を取得 (未知 id は undefined)。 */

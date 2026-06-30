@@ -2,9 +2,12 @@ import { describe, it, expect } from "vitest";
 import { InferenceService } from "./inferenceService";
 import { DummyInferenceAdapter } from "./dummyInferenceAdapter";
 import { JobQueue } from "@main/jobs/jobQueue";
+import { WritingValidationError } from "@shared/writing/writingModes";
 import type {
   ImageJobResult,
   InferencePort,
+  TextGenerationRequest,
+  TextGenerationResult,
   VideoJobResult,
 } from "@shared/inference/port";
 
@@ -125,5 +128,93 @@ describe("失敗経路", () => {
     const job = svc.getJob(id);
     expect(job?.state).toBe("failed");
     expect(job?.error).toContain("backend exploded");
+  });
+});
+
+/** generateText 呼び出しを記録する InferencePort。 */
+function makeRecordingPort(): {
+  port: InferencePort;
+  calls: TextGenerationRequest[];
+} {
+  const calls: TextGenerationRequest[] = [];
+  const notUsed = async (): Promise<never> => {
+    throw new Error("not used");
+  };
+  const port: InferencePort = {
+    healthCheck: async () => ({ status: "ok", adapter: "recording" }),
+    generateText: async (req): Promise<TextGenerationResult> => {
+      calls.push(req);
+      return {
+        text: `recorded:${req.mode}`,
+        finishReason: "stop",
+        model: "recording",
+        usage: { promptTokens: 1, completionTokens: 1 },
+      };
+    },
+    generateCodePlan: notUsed,
+    runImageJob: notUsed,
+    runVideoJob: notUsed,
+  };
+  return { port, calls };
+}
+
+function makeTextService(port: InferencePort) {
+  const queue = new JobQueue({ now: makeClock(), idFactory: () => "job-1" });
+  return new InferenceService(port, queue);
+}
+
+describe("generateText: validate -> normalize -> port.generateText", () => {
+  it("正常時はモード別既定で正規化して port を呼び、結果を返す", async () => {
+    const { port, calls } = makeRecordingPort();
+    const svc = makeTextService(port);
+
+    const result = await svc.generateText({
+      mode: "business",
+      prompt: "報告書を書く",
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.mode).toBe("business");
+    expect(calls[0]?.prompt).toBe("報告書を書く");
+    expect(calls[0]?.maxTokens).toBe(2048); // business 既定
+    expect(calls[0]?.temperature).toBe(0.3); // business 既定
+    expect(result.text).toBe("recorded:business");
+  });
+
+  it("指定値は既定で上書きせず port へ渡す", async () => {
+    const { port, calls } = makeRecordingPort();
+    const svc = makeTextService(port);
+
+    await svc.generateText({
+      mode: "general",
+      prompt: "x",
+      maxTokens: 256,
+      temperature: 0.5,
+    });
+
+    expect(calls[0]?.maxTokens).toBe(256);
+    expect(calls[0]?.temperature).toBe(0.5);
+  });
+
+  it("空プロンプトは WritingValidationError で拒否し、port を呼ばない", async () => {
+    const { port, calls } = makeRecordingPort();
+    const svc = makeTextService(port);
+
+    await expect(
+      svc.generateText({ mode: "general", prompt: "   " }),
+    ).rejects.toBeInstanceOf(WritingValidationError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("禁止条件 (legal の高 temperature) を拒否し、違反明細を保持する", async () => {
+    const { port, calls } = makeRecordingPort();
+    const svc = makeTextService(port);
+
+    await expect(
+      svc.generateText({ mode: "legal", prompt: "契約書", temperature: 0.9 }),
+    ).rejects.toMatchObject({
+      violations: [{ code: "TEMPERATURE_NOT_ALLOWED" }],
+    });
+    expect(calls).toHaveLength(0);
   });
 });

@@ -25,6 +25,8 @@ export interface TextGenerationRequest {
   prompt: string;
   mode?: WritingMode;
   maxTokens?: number;
+  /** サンプリング温度。文章作成モードの上限に従う (writingModes 参照)。 */
+  temperature?: number;
 }
 
 export interface TokenUsage {
