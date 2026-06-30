@@ -30,3 +30,21 @@ test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", as
 
   await app.close();
 });
+
+test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", async () => {
+  const app = await electron.launch({
+    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+  });
+  const page = await app.firstWindow();
+
+  await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
+  await page.getByLabel("種別").selectOption("t2v");
+  await page.getByLabel("プロンプト").fill("a dog runs");
+  await page.getByRole("button", { name: "動画ジョブを投入" }).click();
+
+  await expect(page.getByText("完了しました")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("種別: t2v")).toBeVisible();
+  await expect(page.getByText(/\.mp4/)).toBeVisible();
+
+  await app.close();
+});
