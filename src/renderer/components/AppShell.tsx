@@ -63,7 +63,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-shell">
+    <main className="app-shell">
       <div
         className="app-nav"
         role="tablist"
@@ -98,6 +98,6 @@ export function AppShell() {
       >
         {renderPanel(active)}
       </div>
-    </div>
+    </main>
   );
 }
