@@ -39,5 +39,10 @@ test("coding: タブ -> 目標入力 -> 計画作成 -> 計画表示", async () 
   await page.getByRole("button", { name: "検証" }).click();
   await expect(page.getByText("passed")).toBeVisible({ timeout: 15_000 });
 
+  // rewind 縦切り: 1手戻す -> verified から executed へ (検証結果が消える)
+  await page.getByRole("button", { name: "1手戻す" }).click();
+  await expect(page.getByText("passed")).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText(/executed:/).first()).toBeVisible();
+
   await app.close();
 });

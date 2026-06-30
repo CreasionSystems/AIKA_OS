@@ -1,24 +1,34 @@
 import { useState, type FormEvent } from "react";
 import { getAikaApi } from "@preload/windowApi";
-import type { CodingState } from "@main/coding/codingWorkflow";
+import type { CodingView } from "@main/coding/codingWorkflow";
 
 /**
  * コーディング支援画面 (plan 縦切り)。
  * 目標 (goal) 入力 -> 計画作成 (planCode) -> 計画表示。
  * Execute / Verify / Rewind は後続の縦切りで追加する。
  */
-type Phase = "idle" | "planning" | "executing" | "verifying" | "error";
+type Phase =
+  | "idle"
+  | "planning"
+  | "executing"
+  | "verifying"
+  | "rewinding"
+  | "error";
 
 export function CodingPanel() {
   const [goal, setGoal] = useState("");
-  const [state, setState] = useState<CodingState | null>(null);
+  const [state, setState] = useState<CodingView | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const busy =
-    phase === "planning" || phase === "executing" || phase === "verifying";
+    phase === "planning" ||
+    phase === "executing" ||
+    phase === "verifying" ||
+    phase === "rewinding";
   const canExecute = state?.phase === "planned" && !busy;
   const canVerify = state?.phase === "executed" && !busy;
+  const canRewind = (state?.canRewind ?? false) && !busy;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -60,6 +70,19 @@ export function CodingPanel() {
     }
   }
 
+  async function onRewind() {
+    setPhase("rewinding");
+    setError(null);
+    try {
+      const next = await getAikaApi().rewindCode();
+      setState(next);
+      setPhase("idle");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase("error");
+    }
+  }
+
   return (
     <section>
       <h1>コーディング</h1>
@@ -74,6 +97,10 @@ export function CodingPanel() {
           {phase === "planning" ? "作成中…" : "計画を作成"}
         </button>
       </form>
+
+      <button type="button" onClick={onRewind} disabled={!canRewind}>
+        {phase === "rewinding" ? "戻し中…" : "1手戻す"}
+      </button>
 
       {error !== null && <p role="alert">{error}</p>}
 

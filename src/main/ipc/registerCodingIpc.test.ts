@@ -95,6 +95,46 @@ describe("registerCodingIpc", () => {
     await expect(api.verifyCode()).rejects.toThrow(/executed/);
   });
 
+  it("planCode は canRewind=true を返す", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerCodingIpc(
+      ipcMain,
+      new CodingWorkflow({ generateCodePlan: async () => fixedPlan }),
+    );
+    const api = createAikaApi(invoke);
+    const state = await api.planCode("g");
+    expect(state.canRewind).toBe(true);
+  });
+
+  it("rewindCode は1手ずつ戻し、最後は idle/canRewind=false", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const workflow = new CodingWorkflow({
+      generateCodePlan: async () => fixedPlan,
+    });
+    registerCodingIpc(ipcMain, workflow);
+    const api = createAikaApi(invoke);
+
+    await api.planCode("g");
+    await api.executeCode();
+    await api.verifyCode();
+
+    expect((await api.rewindCode()).phase).toBe("executed");
+    expect((await api.rewindCode()).phase).toBe("planned");
+    const back = await api.rewindCode();
+    expect(back.phase).toBe("idle");
+    expect(back.canRewind).toBe(false);
+  });
+
+  it("履歴が無い rewindCode は reject する", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerCodingIpc(
+      ipcMain,
+      new CodingWorkflow({ generateCodePlan: async () => fixedPlan }),
+    );
+    const api = createAikaApi(invoke);
+    await expect(api.rewindCode()).rejects.toThrow();
+  });
+
   it("planCode チャンネルを handle する", () => {
     const { ipcMain } = makeFakeIpc();
     const handlers = new Map<string, Handler>();

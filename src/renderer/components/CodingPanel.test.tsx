@@ -3,7 +3,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CodingPanel } from "./CodingPanel";
 import type { AikaApi } from "@shared/ipc/contract";
-import type { CodingState } from "@main/coding/codingWorkflow";
+import type { CodingView } from "@main/coding/codingWorkflow";
 
 /**
  * コーディング画面の契約テスト (plan 縦切り)。
@@ -13,12 +13,14 @@ function installAikaMock(over: {
   planCode?: AikaApi["planCode"];
   executeCode?: AikaApi["executeCode"];
   verifyCode?: AikaApi["verifyCode"];
+  rewindCode?: AikaApi["rewindCode"];
 }) {
   const planCode = vi.fn(over.planCode ?? (async () => plannedState));
   const executeCode = vi.fn(
     over.executeCode ?? (async () => executedState),
   );
   const verifyCode = vi.fn(over.verifyCode ?? (async () => verifiedState));
+  const rewindCode = vi.fn(over.rewindCode ?? (async () => executedState));
   (window as unknown as { aika: AikaApi }).aika = {
     generateText: vi.fn(),
     submitImageJob: vi.fn(),
@@ -30,8 +32,9 @@ function installAikaMock(over: {
     planCode,
     executeCode,
     verifyCode,
+    rewindCode,
   } as unknown as AikaApi;
-  return { planCode, executeCode, verifyCode };
+  return { planCode, executeCode, verifyCode, rewindCode };
 }
 
 function makeDeferred<T>() {
@@ -40,7 +43,7 @@ function makeDeferred<T>() {
   return { promise, resolve };
 }
 
-const plannedState: CodingState = {
+const plannedState: CodingView = {
   phase: "planned",
   goal: "add feature",
   plan: {
@@ -50,18 +53,21 @@ const plannedState: CodingState = {
       { title: "実装", detail: "最小差分を書く" },
     ],
   },
+  canRewind: true,
 };
 
-const executedState: CodingState = {
+const executedState: CodingView = {
   ...plannedState,
   phase: "executed",
   executionLog: ["executed: 分解", "executed: 実装"],
+  canRewind: true,
 };
 
-const verifiedState: CodingState = {
+const verifiedState: CodingView = {
   ...executedState,
   phase: "verified",
   verification: { passed: true, notes: ["verified (stub)"] },
+  canRewind: true,
 };
 
 beforeEach(() => {
@@ -90,7 +96,7 @@ describe("CodingPanel (plan)", () => {
   });
 
   it("作成中はボタンを無効化する", async () => {
-    const d = makeDeferred<CodingState>();
+    const d = makeDeferred<CodingView>();
     installAikaMock({ planCode: () => d.promise });
     const user = userEvent.setup();
     render(<CodingPanel />);
@@ -217,5 +223,61 @@ describe("CodingPanel (verify)", () => {
     await user.click(screen.getByRole("button", { name: "検証" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/executed/);
+  });
+});
+
+describe("CodingPanel (rewind)", () => {
+  it("履歴が無い (未計画) ときは戻すボタンが無効", () => {
+    installAikaMock({});
+    render(<CodingPanel />);
+    expect(screen.getByRole("button", { name: "1手戻す" })).toBeDisabled();
+  });
+
+  it("verified から1手戻すと executed 表示に戻る (検証結果が消える)", async () => {
+    const { rewindCode } = installAikaMock({
+      rewindCode: async () => executedState,
+    });
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+    await screen.findByText("Plan for: add feature");
+    await user.click(screen.getByRole("button", { name: "実行" }));
+    await screen.findByText("executed: 分解");
+    await user.click(screen.getByRole("button", { name: "検証" }));
+    await screen.findByText("verified (stub)");
+
+    const rewindButton = screen.getByRole("button", { name: "1手戻す" });
+    expect(rewindButton).toBeEnabled();
+    await user.click(rewindButton);
+
+    expect(rewindCode).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.queryByText("verified (stub)")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("executed: 分解")).toBeInTheDocument();
+  });
+
+  it("idle まで戻ると戻すボタンが無効になる", async () => {
+    installAikaMock({
+      planCode: async () => plannedState,
+      rewindCode: async () => ({ phase: "idle", canRewind: false }),
+    });
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+    await screen.findByText("Plan for: add feature");
+
+    await user.click(screen.getByRole("button", { name: "1手戻す" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Plan for: add feature"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: "1手戻す" })).toBeDisabled();
   });
 });

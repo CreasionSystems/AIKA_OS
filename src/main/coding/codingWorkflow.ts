@@ -30,6 +30,11 @@ export interface CodingState {
   verification?: VerificationResult;
 }
 
+/** UI/IPC 向けの状態ビュー。派生値 canRewind を含める。 */
+export interface CodingView extends CodingState {
+  canRewind: boolean;
+}
+
 const INITIAL_STATE: CodingState = { phase: "idle" };
 
 export class CodingWorkflow {
