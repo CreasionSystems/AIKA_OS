@@ -5,6 +5,7 @@ import type {
   VideoJobRequest,
 } from "@shared/inference/port";
 import type { WritingRequest } from "@shared/writing/writingModes";
+import type { AppSettings } from "@shared/settings/settings";
 
 /**
  * main <-> preload 間の IPC 契約。
@@ -17,6 +18,8 @@ export const IPC_CHANNELS = {
   submitImageJob: "aika:inference:submitImageJob",
   submitVideoJob: "aika:inference:submitVideoJob",
   getJob: "aika:jobs:getJob",
+  getSettings: "aika:settings:get",
+  saveSettings: "aika:settings:save",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -30,4 +33,6 @@ export interface AikaApi {
   submitImageJob(req: ImageJobRequest): Promise<string>;
   submitVideoJob(req: VideoJobRequest): Promise<string>;
   getJob(id: string): Promise<Job | undefined>;
+  getSettings(): Promise<AppSettings>;
+  saveSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
 }

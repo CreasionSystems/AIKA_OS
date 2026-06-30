@@ -6,6 +6,7 @@ import type {
   VideoJobRequest,
 } from "@shared/inference/port";
 import type { WritingRequest } from "@shared/writing/writingModes";
+import type { AppSettings } from "@shared/settings/settings";
 
 /**
  * preload ブリッジ。
@@ -39,6 +40,10 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.submitVideoJob, req) as Promise<string>,
     getJob: (id: string) =>
       invoke(IPC_CHANNELS.getJob, id) as Promise<Job | undefined>,
+    getSettings: () =>
+      invoke(IPC_CHANNELS.getSettings) as Promise<AppSettings>,
+    saveSettings: (patch: Partial<AppSettings>) =>
+      invoke(IPC_CHANNELS.saveSettings, patch) as Promise<AppSettings>,
   };
 }
 

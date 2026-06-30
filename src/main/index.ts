@@ -2,9 +2,12 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 import { createSecureWebPreferences } from "./security/webPreferences";
 import { registerInferenceIpc } from "./ipc/registerInferenceIpc";
+import { registerSettingsIpc } from "./ipc/registerSettingsIpc";
 import { InferenceService } from "./inference/inferenceService";
 import { DummyInferenceAdapter } from "./inference/dummyInferenceAdapter";
 import { JobQueue } from "./jobs/jobQueue";
+import { SettingsService } from "@shared/settings/settings";
+import { FileSettingsStore } from "./settings/fileSettingsStore";
 
 /**
  * Electron Main エントリ (最小結線)。
@@ -16,6 +19,11 @@ import { JobQueue } from "./jobs/jobQueue";
 
 function buildInferenceService(): InferenceService {
   return new InferenceService(new DummyInferenceAdapter(), new JobQueue());
+}
+
+function buildSettingsService(): SettingsService {
+  const file = path.join(app.getPath("userData"), "settings.json");
+  return new SettingsService(new FileSettingsStore(file));
 }
 
 function createMainWindow(): BrowserWindow {
@@ -33,6 +41,7 @@ function createMainWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   registerInferenceIpc(ipcMain, buildInferenceService());
+  registerSettingsIpc(ipcMain, buildSettingsService());
   createMainWindow();
 
   app.on("activate", () => {

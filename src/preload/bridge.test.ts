@@ -33,7 +33,14 @@ describe("createAikaApi: 公開面の最小性", () => {
     const { invoke } = makeInvokeSpy();
     const api = createAikaApi(invoke);
     expect(Object.keys(api).sort()).toEqual(
-      ["generateText", "getJob", "submitImageJob", "submitVideoJob"].sort(),
+      [
+        "generateText",
+        "getJob",
+        "getSettings",
+        "saveSettings",
+        "submitImageJob",
+        "submitVideoJob",
+      ].sort(),
     );
   });
 
@@ -85,6 +92,22 @@ describe("createAikaApi: channel への委譲と素通し", () => {
     expect(calls[0]?.channel).toBe(IPC_CHANNELS.getJob);
     expect(calls[0]?.args).toEqual(["job-1"]);
   });
+
+  it("getSettings は引数なしで内部 channel へ委譲する", async () => {
+    const { invoke, calls } = makeInvokeSpy();
+    const api = createAikaApi(invoke);
+    await api.getSettings();
+    expect(calls[0]?.channel).toBe(IPC_CHANNELS.getSettings);
+    expect(calls[0]?.args).toEqual([]);
+  });
+
+  it("saveSettings は patch を引数に内部 channel へ委譲する", async () => {
+    const { invoke, calls } = makeInvokeSpy();
+    const api = createAikaApi(invoke);
+    await api.saveSettings({ theme: "dark" });
+    expect(calls[0]?.channel).toBe(IPC_CHANNELS.saveSettings);
+    expect(calls[0]?.args).toEqual([{ theme: "dark" }]);
+  });
 });
 
 describe("exposeAikaApi: contextBridge への最小公開", () => {
@@ -101,7 +124,14 @@ describe("exposeAikaApi: contextBridge への最小公開", () => {
     expect(exposed[0]?.key).toBe(AIKA_API_KEY);
     expect(AIKA_API_KEY).toBe("aika");
     expect(Object.keys(exposed[0]?.api as object).sort()).toEqual(
-      ["generateText", "getJob", "submitImageJob", "submitVideoJob"].sort(),
+      [
+        "generateText",
+        "getJob",
+        "getSettings",
+        "saveSettings",
+        "submitImageJob",
+        "submitVideoJob",
+      ].sort(),
     );
   });
 });
