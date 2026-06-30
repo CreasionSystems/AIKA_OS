@@ -69,6 +69,32 @@ describe("registerCodingIpc", () => {
     await expect(api.executeCode()).rejects.toThrow(/planned/);
   });
 
+  it("verifyCode は executed の後に verified + verification を返す", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const workflow = new CodingWorkflow({
+      generateCodePlan: async () => fixedPlan,
+    });
+    registerCodingIpc(ipcMain, workflow);
+    const api = createAikaApi(invoke);
+
+    await api.planCode("add feature");
+    await api.executeCode();
+    const state = await api.verifyCode();
+    expect(state.phase).toBe("verified");
+    expect(state.verification?.passed).toBe(true);
+  });
+
+  it("未実行時の verifyCode は reject する", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const workflow = new CodingWorkflow({
+      generateCodePlan: async () => fixedPlan,
+    });
+    registerCodingIpc(ipcMain, workflow);
+    const api = createAikaApi(invoke);
+    await api.planCode("g");
+    await expect(api.verifyCode()).rejects.toThrow(/executed/);
+  });
+
   it("planCode チャンネルを handle する", () => {
     const { ipcMain } = makeFakeIpc();
     const handlers = new Map<string, Handler>();

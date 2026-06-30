@@ -7,7 +7,7 @@ import type { CodingState } from "@main/coding/codingWorkflow";
  * 目標 (goal) 入力 -> 計画作成 (planCode) -> 計画表示。
  * Execute / Verify / Rewind は後続の縦切りで追加する。
  */
-type Phase = "idle" | "planning" | "executing" | "error";
+type Phase = "idle" | "planning" | "executing" | "verifying" | "error";
 
 export function CodingPanel() {
   const [goal, setGoal] = useState("");
@@ -15,8 +15,10 @@ export function CodingPanel() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const busy = phase === "planning" || phase === "executing";
+  const busy =
+    phase === "planning" || phase === "executing" || phase === "verifying";
   const canExecute = state?.phase === "planned" && !busy;
+  const canVerify = state?.phase === "executed" && !busy;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -37,6 +39,19 @@ export function CodingPanel() {
     setError(null);
     try {
       const next = await getAikaApi().executeCode();
+      setState(next);
+      setPhase("idle");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase("error");
+    }
+  }
+
+  async function onVerify() {
+    setPhase("verifying");
+    setError(null);
+    try {
+      const next = await getAikaApi().verifyCode();
       setState(next);
       setPhase("idle");
     } catch (err) {
@@ -84,6 +99,21 @@ export function CodingPanel() {
           <ul>
             {state.executionLog.map((line, i) => (
               <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button type="button" onClick={onVerify} disabled={!canVerify}>
+        {phase === "verifying" ? "検証中…" : "検証"}
+      </button>
+
+      {state?.verification && (
+        <div aria-label="検証結果">
+          <p>{state.verification.passed ? "passed" : "failed"}</p>
+          <ul>
+            {state.verification.notes.map((note, i) => (
+              <li key={i}>{note}</li>
             ))}
           </ul>
         </div>

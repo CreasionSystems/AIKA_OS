@@ -12,11 +12,13 @@ import type { CodingState } from "@main/coding/codingWorkflow";
 function installAikaMock(over: {
   planCode?: AikaApi["planCode"];
   executeCode?: AikaApi["executeCode"];
+  verifyCode?: AikaApi["verifyCode"];
 }) {
   const planCode = vi.fn(over.planCode ?? (async () => plannedState));
   const executeCode = vi.fn(
     over.executeCode ?? (async () => executedState),
   );
+  const verifyCode = vi.fn(over.verifyCode ?? (async () => verifiedState));
   (window as unknown as { aika: AikaApi }).aika = {
     generateText: vi.fn(),
     submitImageJob: vi.fn(),
@@ -27,8 +29,9 @@ function installAikaMock(over: {
     checkUpdate: vi.fn(),
     planCode,
     executeCode,
+    verifyCode,
   } as unknown as AikaApi;
-  return { planCode, executeCode };
+  return { planCode, executeCode, verifyCode };
 }
 
 function makeDeferred<T>() {
@@ -53,6 +56,12 @@ const executedState: CodingState = {
   ...plannedState,
   phase: "executed",
   executionLog: ["executed: 分解", "executed: 実装"],
+};
+
+const verifiedState: CodingState = {
+  ...executedState,
+  phase: "verified",
+  verification: { passed: true, notes: ["verified (stub)"] },
 };
 
 beforeEach(() => {
@@ -161,5 +170,52 @@ describe("CodingPanel (execute)", () => {
     await user.click(screen.getByRole("button", { name: "実行" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/planned/);
+  });
+});
+
+describe("CodingPanel (verify)", () => {
+  it("未実行時は検証ボタンが無効", () => {
+    installAikaMock({});
+    render(<CodingPanel />);
+    expect(screen.getByRole("button", { name: "検証" })).toBeDisabled();
+  });
+
+  it("plan -> execute -> verify で検証結果を表示する", async () => {
+    const { verifyCode } = installAikaMock({});
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+    await screen.findByText("Plan for: add feature");
+    await user.click(screen.getByRole("button", { name: "実行" }));
+    await screen.findByText("executed: 分解");
+
+    const verifyButton = screen.getByRole("button", { name: "検証" });
+    expect(verifyButton).toBeEnabled();
+    await user.click(verifyButton);
+
+    expect(verifyCode).toHaveBeenCalled();
+    expect(await screen.findByText(/passed/i)).toBeInTheDocument();
+    expect(screen.getByText("verified (stub)")).toBeInTheDocument();
+  });
+
+  it("verify 失敗時は alert を表示する", async () => {
+    installAikaMock({
+      verifyCode: async () => {
+        throw new Error("verify は executed 状態でのみ可能です");
+      },
+    });
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+    await screen.findByText("Plan for: add feature");
+    await user.click(screen.getByRole("button", { name: "実行" }));
+    await screen.findByText("executed: 分解");
+    await user.click(screen.getByRole("button", { name: "検証" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/executed/);
   });
 });

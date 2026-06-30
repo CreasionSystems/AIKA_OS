@@ -52,6 +52,8 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.planCode, goal) as Promise<CodingState>,
     executeCode: () =>
       invoke(IPC_CHANNELS.executeCode) as Promise<CodingState>,
+    verifyCode: () =>
+      invoke(IPC_CHANNELS.verifyCode) as Promise<CodingState>,
   };
 }
 

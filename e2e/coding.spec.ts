@@ -35,5 +35,9 @@ test("coding: タブ -> 目標入力 -> 計画作成 -> 計画表示", async () 
     timeout: 15_000,
   });
 
+  // verify 縦切り: 検証 -> 検証結果表示
+  await page.getByRole("button", { name: "検証" }).click();
+  await expect(page.getByText("passed")).toBeVisible({ timeout: 15_000 });
+
   await app.close();
 });

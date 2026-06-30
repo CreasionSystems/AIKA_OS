@@ -8,10 +8,11 @@ import type { CodingState } from "@main/coding/codingWorkflow";
  * execute / verify / rewind は後続の縦切りで追加する。
  */
 
-/** CodingWorkflow が満たす最小インターフェース (plan / execute 段階)。 */
+/** CodingWorkflow が満たす最小インターフェース (plan / execute / verify 段階)。 */
 export interface CodingIpcWorkflow {
   plan(goal: string): Promise<void>;
   execute(): void;
+  verify(): void;
   getState(): CodingState;
 }
 
@@ -27,6 +28,11 @@ export function registerCodingIpc(
   // execute は planned 状態でのみ可能 (CodingWorkflow.execute がガード)。
   ipcMain.handle(IPC_CHANNELS.executeCode, () => {
     workflow.execute();
+    return workflow.getState();
+  });
+  // verify は executed 状態でのみ可能 (CodingWorkflow.verify がガード)。
+  ipcMain.handle(IPC_CHANNELS.verifyCode, () => {
+    workflow.verify();
     return workflow.getState();
   });
 }
