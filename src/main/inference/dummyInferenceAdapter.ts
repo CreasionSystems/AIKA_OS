@@ -88,24 +88,27 @@ export class DummyInferenceAdapter implements InferencePort {
     };
   }
 
-  async runImageJob(req: ImageJobRequest): Promise<ImageJobResult> {
+  async runImageJob(_req: ImageJobRequest): Promise<ImageJobResult> {
     await this.sleep(this.delayMs);
+    const jobId = this.idFactory();
+    // 暫定契約: artifacts はローカル絶対パス。
     return {
-      jobId: this.idFactory(),
+      jobId,
       status: "succeeded",
       backend: "dummy",
-      artifacts: [`dummy://image/${encodeURIComponent(req.prompt)}.png`],
+      artifacts: [`/var/lib/aika/artifacts/${jobId}.png`],
     };
   }
 
   async runVideoJob(req: VideoJobRequest): Promise<VideoJobResult> {
     await this.sleep(this.delayMs);
+    const jobId = this.idFactory();
     return {
-      jobId: this.idFactory(),
+      jobId,
       status: "succeeded",
       backend: "dummy",
       kind: req.kind,
-      artifacts: [`dummy://video/${req.kind}.mp4`],
+      artifacts: [`/var/lib/aika/artifacts/${jobId}.${req.kind}.mp4`],
     };
   }
 }

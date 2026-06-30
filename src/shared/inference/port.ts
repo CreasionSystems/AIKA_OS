@@ -71,7 +71,13 @@ export interface MediaJobResult {
   status: "succeeded" | "failed";
   /** 生成を担ったバックエンド識別子 (Fake は "dummy")。 */
   backend: string;
-  /** 生成物への参照 (パス / URL など)。Fake はプレースホルダ。 */
+  /**
+   * 生成物への参照。
+   *
+   * 暫定契約: 各要素は「ローカル絶対パス」(POSIX 絶対パス) とする。
+   * 将来は構造化型 (ArtifactDescriptor: 種別 / パス / MIME / メタ) への
+   * 置換を前提とする。それまで上位はこの意味に依存してよい。
+   */
   artifacts: string[];
 }
 

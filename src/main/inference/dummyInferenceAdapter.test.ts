@@ -97,6 +97,8 @@ describe("runImageJob (拡張境界, Fake)", () => {
     expect(r1.jobId).toBe("dummy-job-1");
     expect(r2.jobId).toBe("dummy-job-2");
     expect(r1.artifacts.length).toBeGreaterThan(0);
+    // 暫定契約: artifacts はローカル絶対パス。
+    expect(r1.artifacts[0]?.startsWith("/")).toBe(true);
   });
 });
 
@@ -108,5 +110,6 @@ describe("runVideoJob (拡張境界, Fake)", () => {
     expect(r.backend).toBe("dummy");
     expect(r.kind).toBe("t2v");
     expect(r.artifacts.length).toBeGreaterThan(0);
+    expect(r.artifacts[0]?.startsWith("/")).toBe(true);
   });
 });
