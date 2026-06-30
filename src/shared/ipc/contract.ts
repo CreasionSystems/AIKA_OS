@@ -24,6 +24,7 @@ export const IPC_CHANNELS = {
   saveSettings: "aika:settings:save",
   checkUpdate: "aika:update:check",
   planCode: "aika:coding:plan",
+  executeCode: "aika:coding:execute",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -42,4 +43,6 @@ export interface AikaApi {
   checkUpdate(): Promise<UpdateState>;
   /** 目標から計画を生成し、コーディングワークフローの状態を返す。 */
   planCode(goal: string): Promise<CodingState>;
+  /** planned 状態から実行し、更新後の状態を返す。 */
+  executeCode(): Promise<CodingState>;
 }

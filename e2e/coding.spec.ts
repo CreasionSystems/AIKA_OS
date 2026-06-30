@@ -29,5 +29,11 @@ test("coding: タブ -> 目標入力 -> 計画作成 -> 計画表示", async () 
     timeout: 15_000,
   });
 
+  // execute 縦切り: 実行 -> executionLog 表示
+  await page.getByRole("button", { name: "実行" }).click();
+  await expect(page.getByText(/executed:/).first()).toBeVisible({
+    timeout: 15_000,
+  });
+
   await app.close();
 });

@@ -45,6 +45,30 @@ describe("registerCodingIpc", () => {
     expect(state.plan).toEqual(fixedPlan);
   });
 
+  it("executeCode は planned の後に executed + executionLog を返す", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const workflow = new CodingWorkflow({
+      generateCodePlan: async () => fixedPlan,
+    });
+    registerCodingIpc(ipcMain, workflow);
+    const api = createAikaApi(invoke);
+
+    await api.planCode("add feature");
+    const state = await api.executeCode();
+    expect(state.phase).toBe("executed");
+    expect(state.executionLog?.length).toBeGreaterThan(0);
+  });
+
+  it("未計画時の executeCode は reject する", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerCodingIpc(
+      ipcMain,
+      new CodingWorkflow({ generateCodePlan: async () => fixedPlan }),
+    );
+    const api = createAikaApi(invoke);
+    await expect(api.executeCode()).rejects.toThrow(/planned/);
+  });
+
   it("planCode チャンネルを handle する", () => {
     const { ipcMain } = makeFakeIpc();
     const handlers = new Map<string, Handler>();
