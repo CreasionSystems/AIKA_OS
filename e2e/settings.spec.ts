@@ -14,6 +14,8 @@ test("settings: getSettings -> saveSettings -> getSettings 往復", async () => 
     args: [mainEntry, "--no-sandbox", "--disable-gpu"],
   });
   const page = await app.firstWindow();
+  // シェルの設定タブへ切り替えてからパネルを確認する。
+  await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "設定" })).toBeVisible({
     timeout: 15_000,
   });

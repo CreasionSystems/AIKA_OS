@@ -1,12 +1,6 @@
-import { WritingPanel } from "./components/WritingPanel";
-import { SettingsPanel } from "./components/SettingsPanel";
+import { AppShell } from "./components/AppShell";
 
-/** renderer ルート。当面は文章作成 + 設定画面。 */
+/** renderer ルート。タブ式の画面シェル。 */
 export function App() {
-  return (
-    <main>
-      <WritingPanel />
-      <SettingsPanel />
-    </main>
-  );
+  return <AppShell />;
 }

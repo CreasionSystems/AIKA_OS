@@ -1,0 +1,109 @@
+/* 最小レイアウト。導線整理が目的で、本格的な見た目づくりは後続。 */
+:root {
+  --gap: 12px;
+  --border: #d0d0d0;
+  --accent: #2563eb;
+  --error: #b91c1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #1a1a1a;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-nav {
+  display: flex;
+  gap: 4px;
+  padding: var(--gap);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-tab {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.app-tab.is-active {
+  background: #fff;
+  border-bottom-color: #fff;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.app-panel {
+  padding: var(--gap);
+}
+
+.app-panel h1 {
+  font-size: 1.25rem;
+  margin: 0 0 var(--gap);
+}
+
+.app-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+}
+
+.app-panel label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.app-panel input,
+.app-panel select,
+.app-panel textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+}
+
+.app-panel textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.app-panel button[type="submit"] {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.app-panel button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+[role="alert"] {
+  color: var(--error);
+  margin-top: var(--gap);
+}
+
+output {
+  display: block;
+  margin-top: var(--gap);
+  padding: var(--gap);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+}
