@@ -51,6 +51,7 @@ describe("SettingsPanel", () => {
         defaultWritingMode: "novel",
         theme: "dark",
         jobHistoryLimit: 30,
+        mediaPollIntervalMs: 1000,
       }),
     });
     render(<SettingsPanel />);
@@ -60,6 +61,29 @@ describe("SettingsPanel", () => {
     );
     expect(screen.getByLabelText("既定の文章モード")).toHaveValue("novel");
     expect(screen.getByLabelText("ジョブ履歴の上限")).toHaveValue(30);
+    expect(screen.getByLabelText("メディア更新間隔（ms）")).toHaveValue(1000);
+  });
+
+  it("メディア更新間隔を編集して保存できる", async () => {
+    const { saveSettings } = installAikaMock({});
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("メディア更新間隔（ms）")).toHaveValue(
+        DEFAULT_SETTINGS.mediaPollIntervalMs,
+      ),
+    );
+
+    const input = screen.getByLabelText("メディア更新間隔（ms）");
+    await user.clear(input);
+    await user.type(input, "2000");
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() =>
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ mediaPollIntervalMs: 2000 }),
+      ),
+    );
   });
 
   it("編集 -> 保存で saveSettings を呼び、保存完了を表示する", async () => {
@@ -79,6 +103,7 @@ describe("SettingsPanel", () => {
         defaultWritingMode: "general",
         theme: "dark",
         jobHistoryLimit: DEFAULT_SETTINGS.jobHistoryLimit,
+        mediaPollIntervalMs: DEFAULT_SETTINGS.mediaPollIntervalMs,
       }),
     );
     expect(await screen.findByText("保存しました")).toBeInTheDocument();

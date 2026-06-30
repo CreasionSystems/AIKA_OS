@@ -16,20 +16,28 @@ export interface AppSettings {
   theme: ThemeSetting;
   /** 保持するジョブ履歴の最大件数 (正の整数)。 */
   jobHistoryLimit: number;
+  /** メディアジョブ監視の自動ポーリング周期 (ms, 整数 100〜60000)。 */
+  mediaPollIntervalMs: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   defaultWritingMode: "general",
   theme: "system",
   jobHistoryLimit: 50,
+  mediaPollIntervalMs: 1000,
 };
 
 const THEMES: ThemeSetting[] = ["light", "dark", "system"];
 
+/** mediaPollIntervalMs の許容範囲 (ms)。 */
+const POLL_INTERVAL_MIN = 100;
+const POLL_INTERVAL_MAX = 60_000;
+
 export type SettingsViolationCode =
   | "INVALID_WRITING_MODE"
   | "INVALID_THEME"
-  | "INVALID_JOB_HISTORY_LIMIT";
+  | "INVALID_JOB_HISTORY_LIMIT"
+  | "INVALID_POLL_INTERVAL";
 
 export interface SettingsViolation {
   code: SettingsViolationCode;
@@ -49,6 +57,14 @@ function isValidTheme(v: unknown): v is ThemeSetting {
 }
 function isValidJobHistoryLimit(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 1;
+}
+function isValidPollIntervalMs(v: unknown): v is number {
+  return (
+    typeof v === "number" &&
+    Number.isInteger(v) &&
+    v >= POLL_INTERVAL_MIN &&
+    v <= POLL_INTERVAL_MAX
+  );
 }
 
 /** 与えられた部分設定を検証する。present かつ不正な項目のみ違反にする。 */
@@ -79,6 +95,15 @@ export function validateSettings(
     violations.push({
       code: "INVALID_JOB_HISTORY_LIMIT",
       message: "jobHistoryLimit は 1 以上の整数にしてください。",
+    });
+  }
+  if (
+    patch.mediaPollIntervalMs !== undefined &&
+    !isValidPollIntervalMs(patch.mediaPollIntervalMs)
+  ) {
+    violations.push({
+      code: "INVALID_POLL_INTERVAL",
+      message: `mediaPollIntervalMs は ${POLL_INTERVAL_MIN}〜${POLL_INTERVAL_MAX} の整数にしてください。`,
     });
   }
 
@@ -118,6 +143,9 @@ function mergeWithDefaults(
     jobHistoryLimit: isValidJobHistoryLimit(r.jobHistoryLimit)
       ? r.jobHistoryLimit
       : DEFAULT_SETTINGS.jobHistoryLimit,
+    mediaPollIntervalMs: isValidPollIntervalMs(r.mediaPollIntervalMs)
+      ? r.mediaPollIntervalMs
+      : DEFAULT_SETTINGS.mediaPollIntervalMs,
   };
 }
 

@@ -72,7 +72,7 @@ export interface MediaPanelProps {
 
 export function MediaPanel({
   sleep = defaultSleep,
-  pollInterval = DEFAULT_POLL_INTERVAL,
+  pollInterval,
   maxPolls = DEFAULT_MAX_POLLS,
 }: MediaPanelProps = {}) {
   const [prompt, setPrompt] = useState("");
@@ -86,12 +86,24 @@ export function MediaPanel({
 
   const sourceRequired = SOURCE_REQUIRED_KINDS.has(kind);
 
+  // ポーリング周期: prop 明示指定を最優先、未指定なら設定値、なければ既定。
+  const [pollMs, setPollMs] = useState(pollInterval ?? DEFAULT_POLL_INTERVAL);
+
   const mounted = useRef(true);
   useEffect(() => {
     return () => {
       mounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (pollInterval !== undefined) return;
+    void getAikaApi()
+      .getSettings()
+      .then((s) => {
+        if (mounted.current && s) setPollMs(s.mediaPollIntervalMs);
+      });
+  }, [pollInterval]);
 
   const busy =
     phase === "submitting" || phase === "polling" || phase === "refreshing";
@@ -103,7 +115,7 @@ export function MediaPanel({
       if (!mounted.current) return;
       setJob(next);
       if (isSettled(next)) return;
-      await sleep(pollInterval);
+      await sleep(pollMs);
       if (!mounted.current) return;
     }
   }

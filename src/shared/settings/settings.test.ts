@@ -23,6 +23,7 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.defaultWritingMode).toBe("general");
     expect(DEFAULT_SETTINGS.theme).toBe("system");
     expect(DEFAULT_SETTINGS.jobHistoryLimit).toBeGreaterThan(0);
+    expect(DEFAULT_SETTINGS.mediaPollIntervalMs).toBeGreaterThan(0);
   });
 });
 
@@ -58,6 +59,22 @@ describe("validateSettings", () => {
     expect(validateSettings({ jobHistoryLimit: 0 }).ok).toBe(false);
     expect(validateSettings({ jobHistoryLimit: 2.5 }).ok).toBe(false);
   });
+
+  it("範囲外 / 非整数の mediaPollIntervalMs を拒否する", () => {
+    expect(validateSettings({ mediaPollIntervalMs: 50 }).ok).toBe(false); // 下限未満
+    expect(validateSettings({ mediaPollIntervalMs: 100000 }).ok).toBe(false); // 上限超過
+    expect(validateSettings({ mediaPollIntervalMs: 250.5 }).ok).toBe(false); // 非整数
+    const r = validateSettings({ mediaPollIntervalMs: 0 });
+    if (!r.ok) {
+      expect(r.violations.map((v) => v.code)).toContain(
+        "INVALID_POLL_INTERVAL",
+      );
+    }
+  });
+
+  it("範囲内の mediaPollIntervalMs を受理する", () => {
+    expect(validateSettings({ mediaPollIntervalMs: 1000 }).ok).toBe(true);
+  });
 });
 
 describe("SettingsService.load", () => {
@@ -78,11 +95,13 @@ describe("SettingsService.load", () => {
     const store = new FakeSettingsStore({
       theme: "dark",
       jobHistoryLimit: -5,
+      mediaPollIntervalMs: 5,
     });
     const svc = new SettingsService(store);
     const s = await svc.load();
     expect(s.theme).toBe("dark");
     expect(s.jobHistoryLimit).toBe(DEFAULT_SETTINGS.jobHistoryLimit);
+    expect(s.mediaPollIntervalMs).toBe(DEFAULT_SETTINGS.mediaPollIntervalMs);
   });
 });
 
