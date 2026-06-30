@@ -72,6 +72,25 @@ describe("UpdatePanel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/network down/);
   });
 
+  it("状態行は live region (role=status / aria-live=polite / aria-atomic=true) で初期から存在する", () => {
+    installAikaMock(async () => ({ phase: "up-to-date" }));
+    render(<UpdatePanel />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveAttribute("aria-atomic", "true");
+    expect(status).toHaveTextContent("未確認");
+  });
+
+  it("エラーは alert に出し、status には混ぜない", async () => {
+    installAikaMock(async () => ({ phase: "error", error: "network down" }));
+    const user = userEvent.setup();
+    render(<UpdatePanel />);
+    await user.click(screen.getByRole("button", { name: "更新を確認" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/network down/);
+    expect(screen.getByRole("status")).not.toHaveTextContent("network down");
+  });
+
   it("確認中はボタンを無効化し、確認中を表示する", async () => {
     const d = makeDeferred<UpdateState>();
     installAikaMock(() => d.promise);

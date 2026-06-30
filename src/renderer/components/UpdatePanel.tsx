@@ -23,6 +23,14 @@ function describe(state: UpdateState): string {
   }
 }
 
+/** live region に出す短い状態 (エラーは含めない)。 */
+function statusText(phase: UiPhase, state: UpdateState | null): string {
+  if (phase === "checking") return "確認中…";
+  if (phase === "idle" || state === null) return "未確認";
+  if (state.phase === "error") return "";
+  return describe(state);
+}
+
 export function UpdatePanel() {
   const [phase, setPhase] = useState<UiPhase>("idle");
   const [state, setState] = useState<UpdateState | null>(null);
@@ -43,7 +51,7 @@ export function UpdatePanel() {
     }
   }
 
-  const isError = state?.phase === "error";
+  const isError = phase === "done" && state?.phase === "error";
 
   return (
     <section>
@@ -56,12 +64,12 @@ export function UpdatePanel() {
         更新を確認
       </button>
 
-      {phase === "checking" && <p>確認中…</p>}
-      {phase === "idle" && <p>未確認</p>}
-      {phase === "done" && state !== null && !isError && (
-        <p>{describe(state)}</p>
-      )}
-      {isError && <p role="alert">{describe(state)}</p>}
+      {/* live region は最初から DOM に常設する。 */}
+      <p role="status" aria-live="polite" aria-atomic="true">
+        {statusText(phase, state)}
+      </p>
+
+      {isError && state !== null && <p role="alert">{describe(state)}</p>}
     </section>
   );
 }
