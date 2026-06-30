@@ -76,4 +76,12 @@ describe("a11y: 各タブ画面に重大な違反がない", () => {
     await screen.findByRole("heading", { name: "コーディング" });
     await expectNoViolations(container);
   });
+
+  it("メディアタブ", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<AppShell />);
+    await user.click(screen.getByRole("tab", { name: "メディア" }));
+    await screen.findByRole("heading", { name: "メディア" });
+    await expectNoViolations(container);
+  });
 });
