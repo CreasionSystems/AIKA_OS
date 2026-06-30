@@ -5,13 +5,19 @@ import { registerInferenceIpc } from "./ipc/registerInferenceIpc";
 import { registerSettingsIpc } from "./ipc/registerSettingsIpc";
 import { registerUpdateIpc } from "./ipc/registerUpdateIpc";
 import { registerCodingIpc } from "./ipc/registerCodingIpc";
+import { registerJobsIpc } from "./ipc/registerJobsIpc";
 import { UpdateManager, FakeUpdateChecker } from "./update/updateManager";
 import { InferenceService } from "./inference/inferenceService";
 import { DummyInferenceAdapter } from "./inference/dummyInferenceAdapter";
-import { JobQueue } from "./jobs/jobQueue";
+import { JobQueue, type Job } from "./jobs/jobQueue";
 import { CodingWorkflow } from "./coding/codingWorkflow";
 import { SettingsService } from "@shared/settings/settings";
 import { FileSettingsStore } from "./settings/fileSettingsStore";
+import { JobHistory } from "@shared/jobs/jobHistory";
+import type {
+  ImageJobResult,
+  VideoJobResult,
+} from "@shared/inference/port";
 
 /**
  * Electron Main エントリ (最小結線)。
@@ -21,13 +27,25 @@ import { FileSettingsStore } from "./settings/fileSettingsStore";
  * - 推論基盤は当面 DummyInferenceAdapter (Fake)。
  */
 
-function buildInferenceService(): InferenceService {
-  return new InferenceService(new DummyInferenceAdapter(), new JobQueue());
-}
-
 function buildSettingsService(): SettingsService {
   const file = path.join(app.getPath("userData"), "settings.json");
   return new SettingsService(new FileSettingsStore(file));
+}
+
+/** 完了したメディアジョブを履歴へ記録する。 */
+function recordMediaJob(history: JobHistory, job: Job): void {
+  if (job.state !== "succeeded" && job.state !== "failed") return;
+  const result = job.result as ImageJobResult | VideoJobResult | undefined;
+  const kind =
+    result && "kind" in result ? (result as VideoJobResult).kind : undefined;
+  history.record({
+    jobId: job.id,
+    state: job.state,
+    ...(kind !== undefined ? { kind } : {}),
+    ...(result?.artifacts ? { artifacts: result.artifacts } : {}),
+    ...(job.error !== undefined ? { error: job.error } : {}),
+    ...(job.finishedAt !== undefined ? { finishedAt: job.finishedAt } : {}),
+  });
 }
 
 function createMainWindow(): BrowserWindow {
@@ -43,14 +61,24 @@ function createMainWindow(): BrowserWindow {
   return window;
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const settingsService = buildSettingsService();
+  const settings = await settingsService.load();
+
+  // ジョブ履歴 (メモリ常駐, jobHistoryLimit に従う FIFO)。
+  const history = new JobHistory(settings.jobHistoryLimit);
+  const queue = new JobQueue({
+    onSettle: (job) => recordMediaJob(history, job),
+  });
+
   // InferenceService は推論 IPC とコーディングワークフローで共有する。
-  const inference = buildInferenceService();
+  const inference = new InferenceService(new DummyInferenceAdapter(), queue);
   registerInferenceIpc(ipcMain, inference);
-  registerSettingsIpc(ipcMain, buildSettingsService());
+  registerSettingsIpc(ipcMain, settingsService);
   // 当面は Fake チェッカ (最新を返す)。実チェッカは後続で差し替える。
   registerUpdateIpc(ipcMain, new UpdateManager(new FakeUpdateChecker(null)));
   registerCodingIpc(ipcMain, new CodingWorkflow(inference));
+  registerJobsIpc(ipcMain, history);
   createMainWindow();
 
   app.on("activate", () => {

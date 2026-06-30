@@ -6,6 +6,7 @@ import type {
   VideoJobResult,
   VideoKind,
 } from "@shared/inference/port";
+import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
 
 /**
  * メディアタブ (画像ジョブの境界 + ジョブ監視)。
@@ -83,6 +84,7 @@ export function MediaPanel({
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sourceInvalid, setSourceInvalid] = useState(false);
+  const [history, setHistory] = useState<JobHistoryEntry[]>([]);
 
   const sourceRequired = SOURCE_REQUIRED_KINDS.has(kind);
 
@@ -104,6 +106,17 @@ export function MediaPanel({
         if (mounted.current && s) setPollMs(s.mediaPollIntervalMs);
       });
   }, [pollInterval]);
+
+  /** 履歴を取得して表示を更新する (本文は live region 外)。 */
+  async function refreshHistory() {
+    const entries = await getAikaApi().listJobs();
+    if (mounted.current && Array.isArray(entries)) setHistory(entries);
+  }
+
+  useEffect(() => {
+    void refreshHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const busy =
     phase === "submitting" || phase === "polling" || phase === "refreshing";
@@ -149,6 +162,7 @@ export function MediaPanel({
       setPhase("polling");
       await poll(id);
       if (mounted.current) setPhase("idle");
+      await refreshHistory();
     } catch (err) {
       if (mounted.current) {
         setError(err instanceof Error ? err.message : String(err));
@@ -255,6 +269,24 @@ export function MediaPanel({
             <li key={i}>{a}</li>
           ))}
         </ul>
+      )}
+
+      {history.length > 0 && (
+        <div>
+          <h2>ジョブ履歴</h2>
+          <ul aria-label="ジョブ履歴">
+            {history.map((e, i) => (
+              <li key={i}>
+                {e.jobId} — {e.state}
+                {e.kind ? ` (${e.kind})` : ""}
+                {e.artifacts && e.artifacts.length > 0
+                  ? ` — ${e.artifacts.join(", ")}`
+                  : ""}
+                {e.error ? ` — ${e.error}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

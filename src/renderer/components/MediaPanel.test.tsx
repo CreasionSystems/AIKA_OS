@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MediaPanel } from "./MediaPanel";
 import type { AikaApi } from "@shared/ipc/contract";
@@ -16,6 +22,7 @@ function installAikaMock(over: {
   submitVideoJob?: AikaApi["submitVideoJob"];
   getJob?: AikaApi["getJob"];
   getSettings?: AikaApi["getSettings"];
+  listJobs?: AikaApi["listJobs"];
 }) {
   const submitImageJob = vi.fn(over.submitImageJob ?? (async () => "job-1"));
   const submitVideoJob = vi.fn(over.submitVideoJob ?? (async () => "job-1"));
@@ -23,6 +30,7 @@ function installAikaMock(over: {
   const getSettings = vi.fn(
     over.getSettings ?? (async () => DEFAULT_SETTINGS),
   );
+  const listJobs = vi.fn(over.listJobs ?? (async () => []));
   (window as unknown as { aika: AikaApi }).aika = {
     generateText: vi.fn(),
     submitImageJob,
@@ -35,8 +43,9 @@ function installAikaMock(over: {
     executeCode: vi.fn(),
     verifyCode: vi.fn(),
     rewindCode: vi.fn(),
+    listJobs,
   } as unknown as AikaApi;
-  return { submitImageJob, submitVideoJob, getJob };
+  return { submitImageJob, submitVideoJob, getJob, listJobs };
 }
 
 /** 注入用: 待たない sleep。 */
@@ -180,6 +189,35 @@ describe("MediaPanel (自動ポーリング)", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/backend down/);
     expect(screen.getByRole("status")).not.toHaveTextContent("backend down");
+  });
+});
+
+describe("MediaPanel (ジョブ履歴)", () => {
+  it("完了後にジョブ履歴を表示し、status には履歴本文を混ぜない", async () => {
+    installAikaMock({
+      getJob: seqGetJob([queuedJob, succeededJob]),
+      listJobs: async () => [
+        {
+          jobId: "job-1",
+          state: "succeeded",
+          artifacts: ["/var/lib/aika/artifacts/media-1.png"],
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "a cat");
+    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+    );
+
+    const histList = await screen.findByRole("list", { name: "ジョブ履歴" });
+    expect(within(histList).getByText(/job-1/)).toBeInTheDocument();
+    // 履歴本文 (jobId) を live region には出さない
+    expect(screen.getByRole("status")).not.toHaveTextContent("job-1");
   });
 });
 

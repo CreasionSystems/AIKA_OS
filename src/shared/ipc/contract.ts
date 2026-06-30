@@ -1,6 +1,7 @@
 import type { Job } from "@main/jobs/jobQueue";
 import type { UpdateState } from "@main/update/updateManager";
 import type { CodingView } from "@main/coding/codingWorkflow";
+import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
 import type {
   ImageJobRequest,
   TextGenerationResult,
@@ -27,6 +28,7 @@ export const IPC_CHANNELS = {
   executeCode: "aika:coding:execute",
   verifyCode: "aika:coding:verify",
   rewindCode: "aika:coding:rewind",
+  listJobs: "aika:jobs:list",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -51,4 +53,6 @@ export interface AikaApi {
   verifyCode(): Promise<CodingView>;
   /** 1手戻し、更新後の状態を返す (履歴が無ければ reject)。 */
   rewindCode(): Promise<CodingView>;
+  /** 完了ジョブ履歴を新しい順で返す。 */
+  listJobs(): Promise<JobHistoryEntry[]>;
 }

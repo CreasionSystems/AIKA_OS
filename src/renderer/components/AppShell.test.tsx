@@ -30,6 +30,7 @@ function installAikaMock() {
     getJob: vi.fn(),
     getSettings: vi.fn(async () => DEFAULT_SETTINGS),
     saveSettings: vi.fn(async (patch) => ({ ...DEFAULT_SETTINGS, ...patch })),
+    listJobs: vi.fn(async () => []),
   } as unknown as AikaApi;
 }
 

@@ -9,6 +9,7 @@ import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
 import type { UpdateState } from "@main/update/updateManager";
 import type { CodingView } from "@main/coding/codingWorkflow";
+import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
 
 /**
  * preload ブリッジ。
@@ -56,6 +57,8 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.verifyCode) as Promise<CodingView>,
     rewindCode: () =>
       invoke(IPC_CHANNELS.rewindCode) as Promise<CodingView>,
+    listJobs: () =>
+      invoke(IPC_CHANNELS.listJobs) as Promise<JobHistoryEntry[]>,
   };
 }
 

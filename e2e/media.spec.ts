@@ -25,8 +25,13 @@ test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", as
   // 自動ポーリングで完了まで進む (手動更新は不要)。
   await expect(page.getByText("完了しました")).toBeVisible({ timeout: 15_000 });
   await expect(
-    page.getByText(/\/var\/lib\/aika\/artifacts\//),
+    page.getByText(/\/var\/lib\/aika\/artifacts\//).first(),
   ).toBeVisible();
+
+  // 完了後にジョブ履歴へ記録され表示される。
+  await expect(
+    page.getByRole("list", { name: "ジョブ履歴" }),
+  ).toBeVisible({ timeout: 15_000 });
 
   await app.close();
 });
@@ -44,7 +49,7 @@ test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", asy
 
   await expect(page.getByText("完了しました")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("種別: t2v")).toBeVisible();
-  await expect(page.getByText(/\.mp4/)).toBeVisible();
+  await expect(page.getByText(/\.mp4/).first()).toBeVisible();
 
   await app.close();
 });
