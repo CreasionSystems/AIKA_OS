@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { WritingPanel } from "./WritingPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { UpdatePanel } from "./UpdatePanel";
@@ -32,18 +32,56 @@ function renderPanel(tab: TabKey) {
 
 export function AppShell() {
   const [active, setActive] = useState<TabKey>("writing");
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // tablist のキーボード操作 (Left/Right 循環, Home/End)。
+  // フォーカスは選択タブへ移し、選択も同時に行う (自動活性化)。
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const current = TABS.findIndex((t) => t.key === active);
+    let next = current;
+    switch (event.key) {
+      case "ArrowRight":
+        next = (current + 1) % TABS.length;
+        break;
+      case "ArrowLeft":
+        next = (current - 1 + TABS.length) % TABS.length;
+        break;
+      case "Home":
+        next = 0;
+        break;
+      case "End":
+        next = TABS.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const nextTab = TABS[next];
+    if (nextTab === undefined) return;
+    setActive(nextTab.key);
+    tabRefs.current[next]?.focus();
+  }
 
   return (
     <div className="app-shell">
-      <div className="app-nav" role="tablist" aria-label="メインナビ">
-        {TABS.map((t) => (
+      <div
+        className="app-nav"
+        role="tablist"
+        aria-label="メインナビ"
+        onKeyDown={onKeyDown}
+      >
+        {TABS.map((t, i) => (
           <button
             key={t.key}
+            ref={(el) => {
+              tabRefs.current[i] = el;
+            }}
             role="tab"
             type="button"
             id={`tab-${t.key}`}
             aria-controls={`panel-${t.key}`}
             aria-selected={active === t.key}
+            tabIndex={active === t.key ? 0 : -1}
             className={active === t.key ? "app-tab is-active" : "app-tab"}
             onClick={() => setActive(t.key)}
           >

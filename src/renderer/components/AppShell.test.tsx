@@ -81,6 +81,74 @@ describe("ナビ構造", () => {
   });
 });
 
+describe("タブのキーボード操作 (ARIA)", () => {
+  it("roving tabindex: アクティブのみ tabindex=0、他は -1", () => {
+    render(<AppShell />);
+    expect(screen.getByRole("tab", { name: "文章作成" })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+    expect(screen.getByRole("tab", { name: "設定" })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
+  });
+
+  it("aria-controls と tabpanel が整合する", async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+    const writingTab = screen.getByRole("tab", { name: "文章作成" });
+    expect(writingTab).toHaveAttribute("aria-controls", "panel-writing");
+    const panel = screen.getByRole("tabpanel");
+    expect(panel).toHaveAttribute("id", "panel-writing");
+    expect(panel).toHaveAttribute("aria-labelledby", "tab-writing");
+
+    await user.click(screen.getByRole("tab", { name: "設定" }));
+    const panel2 = screen.getByRole("tabpanel");
+    expect(panel2).toHaveAttribute("id", "panel-settings");
+    expect(panel2).toHaveAttribute("aria-labelledby", "tab-settings");
+  });
+
+  it("ArrowRight で次タブを選択しフォーカスする", async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+    const writingTab = screen.getByRole("tab", { name: "文章作成" });
+    writingTab.focus();
+    await user.keyboard("{ArrowRight}");
+
+    const settingsTab = screen.getByRole("tab", { name: "設定" });
+    expect(settingsTab).toHaveAttribute("aria-selected", "true");
+    expect(settingsTab).toHaveFocus();
+    expect(settingsTab).toHaveAttribute("tabindex", "0");
+    expect(writingTab).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("ArrowLeft は先頭から末尾へ循環する", async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+    screen.getByRole("tab", { name: "文章作成" }).focus();
+    await user.keyboard("{ArrowLeft}");
+
+    const codingTab = screen.getByRole("tab", { name: "コーディング" });
+    expect(codingTab).toHaveAttribute("aria-selected", "true");
+    expect(codingTab).toHaveFocus();
+  });
+
+  it("Home / End で先頭・末尾へ移動する", async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+    screen.getByRole("tab", { name: "文章作成" }).focus();
+
+    await user.keyboard("{End}");
+    expect(
+      screen.getByRole("tab", { name: "コーディング" }),
+    ).toHaveFocus();
+
+    await user.keyboard("{Home}");
+    expect(screen.getByRole("tab", { name: "文章作成" })).toHaveFocus();
+  });
+});
+
 describe("シェル上での既存機能の退行確認", () => {
   it("文章作成: 入力 -> 実行 -> 結果表示が動く", async () => {
     const user = userEvent.setup();
