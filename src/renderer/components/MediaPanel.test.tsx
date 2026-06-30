@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MediaPanel } from "./MediaPanel";
 import type { AikaApi } from "@shared/ipc/contract";
 import type { Job } from "@main/jobs/jobQueue";
+import { DEFAULT_SETTINGS } from "@shared/settings/settings";
 
 /**
  * メディアタブ (画像ジョブ) の契約テスト。
@@ -14,16 +15,20 @@ function installAikaMock(over: {
   submitImageJob?: AikaApi["submitImageJob"];
   submitVideoJob?: AikaApi["submitVideoJob"];
   getJob?: AikaApi["getJob"];
+  getSettings?: AikaApi["getSettings"];
 }) {
   const submitImageJob = vi.fn(over.submitImageJob ?? (async () => "job-1"));
   const submitVideoJob = vi.fn(over.submitVideoJob ?? (async () => "job-1"));
   const getJob = vi.fn(over.getJob ?? (async () => undefined));
+  const getSettings = vi.fn(
+    over.getSettings ?? (async () => DEFAULT_SETTINGS),
+  );
   (window as unknown as { aika: AikaApi }).aika = {
     generateText: vi.fn(),
     submitImageJob,
     submitVideoJob,
     getJob,
-    getSettings: vi.fn(),
+    getSettings,
     saveSettings: vi.fn(),
     checkUpdate: vi.fn(),
     planCode: vi.fn(),
@@ -175,6 +180,57 @@ describe("MediaPanel (自動ポーリング)", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/backend down/);
     expect(screen.getByRole("status")).not.toHaveTextContent("backend down");
+  });
+});
+
+describe("MediaPanel (ポーリング間隔の設定連携)", () => {
+  it("pollInterval 未指定なら設定値 (mediaPollIntervalMs) を周期に使う", async () => {
+    installAikaMock({
+      getJob: seqGetJob([queuedJob, succeededJob]),
+      getSettings: async () => ({
+        ...DEFAULT_SETTINGS,
+        mediaPollIntervalMs: 250,
+      }),
+    });
+    const slept: number[] = [];
+    const recordingSleep = async (ms: number) => {
+      slept.push(ms);
+    };
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={recordingSleep} />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "a cat");
+    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+    );
+    expect(slept).toContain(250);
+  });
+
+  it("pollInterval を明示指定した場合は設定値より優先する", async () => {
+    installAikaMock({
+      getJob: seqGetJob([queuedJob, succeededJob]),
+      getSettings: async () => ({
+        ...DEFAULT_SETTINGS,
+        mediaPollIntervalMs: 250,
+      }),
+    });
+    const slept: number[] = [];
+    const recordingSleep = async (ms: number) => {
+      slept.push(ms);
+    };
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={recordingSleep} pollInterval={777} />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "a cat");
+    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+    );
+    expect(slept).toContain(777);
+    expect(slept).not.toContain(250);
   });
 });
 

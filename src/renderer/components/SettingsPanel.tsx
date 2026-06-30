@@ -124,6 +124,16 @@ export function SettingsPanel() {
           }
         />
 
+        <label htmlFor="settings-poll-interval">メディア更新間隔（ms）</label>
+        <input
+          id="settings-poll-interval"
+          type="number"
+          value={settings.mediaPollIntervalMs}
+          onChange={(e) =>
+            patch({ mediaPollIntervalMs: e.target.valueAsNumber })
+          }
+        />
+
         <button type="submit" disabled={phase === "saving"}>
           保存
         </button>
