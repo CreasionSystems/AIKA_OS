@@ -218,3 +218,17 @@ describe("generateText: validate -> normalize -> port.generateText", () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe("generateCodePlan", () => {
+  it("port.generateCodePlan へ委譲し結果を返す", async () => {
+    const svc = makeService(); // DummyInferenceAdapter
+    const plan = await svc.generateCodePlan({ goal: "add feature" });
+    expect(plan.summary).toContain("add feature");
+    expect(plan.steps.length).toBeGreaterThan(0);
+  });
+
+  it("空の goal は拒否する", async () => {
+    const svc = makeService();
+    await expect(svc.generateCodePlan({ goal: "   " })).rejects.toThrow();
+  });
+});

@@ -1,5 +1,7 @@
 import type { JobQueue, Job } from "@main/jobs/jobQueue";
 import type {
+  CodePlanRequest,
+  CodePlanResult,
   ImageJobRequest,
   ImageJobResult,
   InferencePort,
@@ -70,6 +72,17 @@ export class InferenceService implements InferenceIpcService {
       maxTokens: normalized.maxTokens,
       temperature: normalized.temperature,
     });
+  }
+
+  /**
+   * コーディング支援: 計画生成。port.generateCodePlan へ委譲する。
+   * 空の goal は拒否する (内容レベルの検証は将来 policy 層へ)。
+   */
+  async generateCodePlan(req: CodePlanRequest): Promise<CodePlanResult> {
+    if (req.goal.trim().length === 0) {
+      throw new Error("goal が空です。");
+    }
+    return this.port.generateCodePlan(req);
   }
 
   /** ジョブ状態を取得 (未知 id は undefined)。 */
