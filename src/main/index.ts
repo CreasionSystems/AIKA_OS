@@ -4,10 +4,12 @@ import { createSecureWebPreferences } from "./security/webPreferences";
 import { registerInferenceIpc } from "./ipc/registerInferenceIpc";
 import { registerSettingsIpc } from "./ipc/registerSettingsIpc";
 import { registerUpdateIpc } from "./ipc/registerUpdateIpc";
+import { registerCodingIpc } from "./ipc/registerCodingIpc";
 import { UpdateManager, FakeUpdateChecker } from "./update/updateManager";
 import { InferenceService } from "./inference/inferenceService";
 import { DummyInferenceAdapter } from "./inference/dummyInferenceAdapter";
 import { JobQueue } from "./jobs/jobQueue";
+import { CodingWorkflow } from "./coding/codingWorkflow";
 import { SettingsService } from "@shared/settings/settings";
 import { FileSettingsStore } from "./settings/fileSettingsStore";
 
@@ -42,10 +44,13 @@ function createMainWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
-  registerInferenceIpc(ipcMain, buildInferenceService());
+  // InferenceService は推論 IPC とコーディングワークフローで共有する。
+  const inference = buildInferenceService();
+  registerInferenceIpc(ipcMain, inference);
   registerSettingsIpc(ipcMain, buildSettingsService());
   // 当面は Fake チェッカ (最新を返す)。実チェッカは後続で差し替える。
   registerUpdateIpc(ipcMain, new UpdateManager(new FakeUpdateChecker(null)));
+  registerCodingIpc(ipcMain, new CodingWorkflow(inference));
   createMainWindow();
 
   app.on("activate", () => {

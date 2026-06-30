@@ -1,5 +1,6 @@
 import type { Job } from "@main/jobs/jobQueue";
 import type { UpdateState } from "@main/update/updateManager";
+import type { CodingState } from "@main/coding/codingWorkflow";
 import type {
   ImageJobRequest,
   TextGenerationResult,
@@ -22,6 +23,7 @@ export const IPC_CHANNELS = {
   getSettings: "aika:settings:get",
   saveSettings: "aika:settings:save",
   checkUpdate: "aika:update:check",
+  planCode: "aika:coding:plan",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -38,4 +40,6 @@ export interface AikaApi {
   getSettings(): Promise<AppSettings>;
   saveSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
   checkUpdate(): Promise<UpdateState>;
+  /** 目標から計画を生成し、コーディングワークフローの状態を返す。 */
+  planCode(goal: string): Promise<CodingState>;
 }

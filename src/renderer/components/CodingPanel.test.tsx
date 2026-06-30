@@ -1,0 +1,103 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { CodingPanel } from "./CodingPanel";
+import type { AikaApi } from "@shared/ipc/contract";
+import type { CodingState } from "@main/coding/codingWorkflow";
+
+/**
+ * コーディング画面の契約テスト (plan 縦切り)。
+ * goal 入力 -> 計画作成 (planCode) -> 計画表示。
+ */
+function installAikaMock(planCode: AikaApi["planCode"]) {
+  const fn = vi.fn(planCode);
+  (window as unknown as { aika: AikaApi }).aika = {
+    generateText: vi.fn(),
+    submitImageJob: vi.fn(),
+    submitVideoJob: vi.fn(),
+    getJob: vi.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
+    checkUpdate: vi.fn(),
+    planCode: fn,
+  } as unknown as AikaApi;
+  return fn;
+}
+
+function makeDeferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => (resolve = res));
+  return { promise, resolve };
+}
+
+const plannedState: CodingState = {
+  phase: "planned",
+  goal: "add feature",
+  plan: {
+    summary: "Plan for: add feature",
+    steps: [
+      { title: "分解", detail: "目標を分解する" },
+      { title: "実装", detail: "最小差分を書く" },
+    ],
+  },
+};
+
+beforeEach(() => {
+  delete (window as { aika?: unknown }).aika;
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+describe("CodingPanel (plan)", () => {
+  it("goal 入力 -> 計画作成で planCode を呼び、計画を表示する", async () => {
+    const fn = installAikaMock(async () => plannedState);
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+
+    expect(fn).toHaveBeenCalledWith("add feature");
+    expect(
+      await screen.findByText("Plan for: add feature"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("分解")).toBeInTheDocument();
+    expect(screen.getByText("実装")).toBeInTheDocument();
+  });
+
+  it("作成中はボタンを無効化する", async () => {
+    const d = makeDeferred<CodingState>();
+    installAikaMock(() => d.promise);
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "x");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /作成/ }),
+      ).toBeDisabled(),
+    );
+
+    d.resolve(plannedState);
+    expect(
+      await screen.findByText("Plan for: add feature"),
+    ).toBeInTheDocument();
+  });
+
+  it("失敗時は alert を表示する", async () => {
+    installAikaMock(async () => {
+      throw new Error("goal が空です。");
+    });
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "x");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/goal/);
+  });
+});

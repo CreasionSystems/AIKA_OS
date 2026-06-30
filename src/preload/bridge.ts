@@ -8,6 +8,7 @@ import type {
 import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
 import type { UpdateState } from "@main/update/updateManager";
+import type { CodingState } from "@main/coding/codingWorkflow";
 
 /**
  * preload ブリッジ。
@@ -47,6 +48,8 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.saveSettings, patch) as Promise<AppSettings>,
     checkUpdate: () =>
       invoke(IPC_CHANNELS.checkUpdate) as Promise<UpdateState>,
+    planCode: (goal: string) =>
+      invoke(IPC_CHANNELS.planCode, goal) as Promise<CodingState>,
   };
 }
 
