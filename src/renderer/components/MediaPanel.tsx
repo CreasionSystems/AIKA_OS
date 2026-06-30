@@ -30,6 +30,13 @@ const KIND_OPTIONS: { value: MediaKind; label: string }[] = [
   { value: "audio", label: "動画: 音声駆動" },
 ];
 
+/** 元画像 (sourceImage) が必須の動画種別。 */
+const SOURCE_REQUIRED_KINDS: ReadonlySet<MediaKind> = new Set<MediaKind>([
+  "i2v",
+  "continuation",
+  "edit",
+]);
+
 const DEFAULT_POLL_INTERVAL = 500;
 const DEFAULT_MAX_POLLS = 60;
 
@@ -70,10 +77,14 @@ export function MediaPanel({
 }: MediaPanelProps = {}) {
   const [prompt, setPrompt] = useState("");
   const [kind, setKind] = useState<MediaKind>("image");
+  const [sourceImage, setSourceImage] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [sourceInvalid, setSourceInvalid] = useState(false);
+
+  const sourceRequired = SOURCE_REQUIRED_KINDS.has(kind);
 
   const mounted = useRef(true);
   useEffect(() => {
@@ -99,15 +110,28 @@ export function MediaPanel({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setPhase("submitting");
     setError(null);
+    setSourceInvalid(false);
+
+    // source 必須種別の検証 (投入前に阻止し、入力へ関連付ける)。
+    if (sourceRequired && sourceImage.trim() === "") {
+      setSourceInvalid(true);
+      setError("元画像のパスを入力してください。");
+      return;
+    }
+
+    setPhase("submitting");
     setJob(null);
     try {
       const api = getAikaApi();
-      const id =
-        kind === "image"
-          ? await api.submitImageJob({ prompt })
-          : await api.submitVideoJob({ kind, prompt });
+      let id: string;
+      if (kind === "image") {
+        id = await api.submitImageJob({ prompt });
+      } else {
+        id = await api.submitVideoJob(
+          sourceRequired ? { kind, prompt, sourceImage } : { kind, prompt },
+        );
+      }
       if (!mounted.current) return;
       setJobId(id);
       setPhase("polling");
@@ -175,6 +199,21 @@ export function MediaPanel({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
+
+        {sourceRequired && (
+          <>
+            <label htmlFor="media-source">元画像のパス</label>
+            <input
+              id="media-source"
+              type="text"
+              value={sourceImage}
+              onChange={(e) => setSourceImage(e.target.value)}
+              aria-invalid={sourceInvalid}
+              aria-describedby={sourceInvalid ? "media-error" : undefined}
+            />
+          </>
+        )}
+
         <button type="submit" disabled={busy}>
           {phase === "submitting" ? "投入中…" : submitLabel}
         </button>
@@ -188,7 +227,11 @@ export function MediaPanel({
         状態を更新
       </button>
 
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && (
+        <p role="alert" id="media-error">
+          {error}
+        </p>
+      )}
 
       {jobId !== null && <p>ジョブID: {jobId}</p>}
 

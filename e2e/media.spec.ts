@@ -48,3 +48,21 @@ test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", asy
 
   await app.close();
 });
+
+test("media(video): i2v は元画像入力 -> 投入 -> 自動完了", async () => {
+  const app = await electron.launch({
+    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+  });
+  const page = await app.firstWindow();
+
+  await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
+  await page.getByLabel("種別").selectOption("i2v");
+  await page.getByLabel("プロンプト").fill("make it move");
+  await page.getByLabel("元画像のパス").fill("/abs/in.png");
+  await page.getByRole("button", { name: "動画ジョブを投入" }).click();
+
+  await expect(page.getByText("完了しました")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("種別: i2v")).toBeVisible();
+
+  await app.close();
+});

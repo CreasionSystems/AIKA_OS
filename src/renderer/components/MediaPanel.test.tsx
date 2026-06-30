@@ -214,3 +214,65 @@ describe("MediaPanel (種別選択 / 動画)", () => {
     expect(screen.getByText("種別: t2v")).toBeInTheDocument();
   });
 });
+
+describe("MediaPanel (sourceImage 入力)", () => {
+  it("source 必須の種別 (i2v) でのみ sourceImage 欄を表示する", async () => {
+    installAikaMock({});
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    // 画像・t2v では非表示
+    expect(screen.queryByLabelText("元画像のパス")).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("種別"), "t2v");
+    expect(screen.queryByLabelText("元画像のパス")).not.toBeInTheDocument();
+
+    // i2v では可視ラベル付きで表示
+    await user.selectOptions(screen.getByLabelText("種別"), "i2v");
+    expect(screen.getByLabelText("元画像のパス")).toBeInTheDocument();
+  });
+
+  it("i2v で sourceImage 未入力なら投入を阻止し、入力に検証を関連付ける", async () => {
+    const { submitVideoJob } = installAikaMock({});
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.selectOptions(screen.getByLabelText("種別"), "i2v");
+    await user.type(screen.getByLabelText("プロンプト"), "x");
+    await user.click(screen.getByRole("button", { name: "動画ジョブを投入" }));
+
+    expect(submitVideoJob).not.toHaveBeenCalled();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/元画像/);
+
+    const input = screen.getByLabelText("元画像のパス");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    // エラーは aria-describedby で入力に関連付ける
+    const describedby = input.getAttribute("aria-describedby");
+    expect(describedby).toBeTruthy();
+    expect(alert).toHaveAttribute("id", describedby as string);
+    // 状態 live region にはエラーを混ぜない
+    expect(screen.getByRole("status")).not.toHaveTextContent("元画像");
+  });
+
+  it("i2v で sourceImage を入力すると submitVideoJob に含めて投入する", async () => {
+    const { submitVideoJob } = installAikaMock({
+      getJob: seqGetJob([queuedJob, videoSucceededJob]),
+    });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.selectOptions(screen.getByLabelText("種別"), "i2v");
+    await user.type(screen.getByLabelText("プロンプト"), "make it move");
+    await user.type(screen.getByLabelText("元画像のパス"), "/abs/in.png");
+    await user.click(screen.getByRole("button", { name: "動画ジョブを投入" }));
+
+    expect(submitVideoJob).toHaveBeenCalledWith({
+      kind: "i2v",
+      prompt: "make it move",
+      sourceImage: "/abs/in.png",
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+    );
+  });
+});
