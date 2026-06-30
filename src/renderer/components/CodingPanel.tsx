@@ -15,11 +15,48 @@ type Phase =
   | "rewinding"
   | "error";
 
+/** 直近に完了した操作。状態サマリーの文言切替に使う。 */
+type LastAction = "plan" | "execute" | "verify" | "rewind" | null;
+
+/** live region 用の短い状態サマリー (本文・ログ全文は含めない)。 */
+function summarize(
+  phase: Phase,
+  state: CodingView | null,
+  lastAction: LastAction,
+): string {
+  switch (phase) {
+    case "planning":
+      return "計画を作成中…";
+    case "executing":
+      return "実行中…";
+    case "verifying":
+      return "検証中…";
+    case "rewinding":
+      return "1手戻し中…";
+    default:
+      break;
+  }
+  if (state === null) return "未着手";
+  switch (lastAction) {
+    case "plan":
+      return `計画を作成しました（${state.plan?.steps.length ?? 0}手順）`;
+    case "execute":
+      return "実行が完了しました";
+    case "verify":
+      return "検証が完了しました";
+    case "rewind":
+      return `1手戻しました（${state.phase}）`;
+    default:
+      return "未着手";
+  }
+}
+
 export function CodingPanel() {
   const [goal, setGoal] = useState("");
   const [state, setState] = useState<CodingView | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<LastAction>(null);
 
   const busy =
     phase === "planning" ||
@@ -37,6 +74,7 @@ export function CodingPanel() {
     try {
       const next = await getAikaApi().planCode(goal);
       setState(next);
+      setLastAction("plan");
       setPhase("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -50,6 +88,7 @@ export function CodingPanel() {
     try {
       const next = await getAikaApi().executeCode();
       setState(next);
+      setLastAction("execute");
       setPhase("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -63,6 +102,7 @@ export function CodingPanel() {
     try {
       const next = await getAikaApi().verifyCode();
       setState(next);
+      setLastAction("verify");
       setPhase("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -76,6 +116,7 @@ export function CodingPanel() {
     try {
       const next = await getAikaApi().rewindCode();
       setState(next);
+      setLastAction("rewind");
       setPhase("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -86,6 +127,12 @@ export function CodingPanel() {
   return (
     <section>
       <h1>コーディング</h1>
+
+      {/* 短い状態サマリーのみ live region に置く (本文・ログ全文は含めない)。 */}
+      <p role="status" aria-live="polite" aria-atomic="true">
+        {summarize(phase, state, lastAction)}
+      </p>
+
       <form onSubmit={onSubmit}>
         <label htmlFor="coding-goal">目標 (goal)</label>
         <textarea

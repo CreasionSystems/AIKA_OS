@@ -226,6 +226,78 @@ describe("CodingPanel (verify)", () => {
   });
 });
 
+describe("CodingPanel (状態サマリー live region)", () => {
+  it("サマリーは role=status / aria-live=polite / aria-atomic=true で初期から『未着手』", () => {
+    installAikaMock({});
+    render(<CodingPanel />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveAttribute("aria-atomic", "true");
+    expect(status).toHaveTextContent("未着手");
+  });
+
+  it("各操作後にサマリー文言が更新される", async () => {
+    installAikaMock({});
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+    const status = () => screen.getByRole("status");
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("計画を作成しました（2手順）"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "実行" }));
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("実行が完了しました"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "検証" }));
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("検証が完了しました"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "1手戻す" }));
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("1手戻しました（executed）"),
+    );
+  });
+
+  it("本文・ログ・検証の全文は live region 外にある", async () => {
+    installAikaMock({});
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "add feature");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+    await user.click(screen.getByRole("button", { name: "実行" }));
+    await user.click(screen.getByRole("button", { name: "検証" }));
+    await screen.findByText("verified (stub)");
+
+    const status = screen.getByRole("status");
+    expect(status).not.toHaveTextContent("Plan for: add feature");
+    expect(status).not.toHaveTextContent("executed: 分解");
+    expect(status).not.toHaveTextContent("verified (stub)");
+  });
+
+  it("エラーは alert に出し、status には混ぜない", async () => {
+    installAikaMock({
+      planCode: async () => {
+        throw new Error("goal が空です。");
+      },
+    });
+    const user = userEvent.setup();
+    render(<CodingPanel />);
+
+    await user.type(screen.getByLabelText("目標 (goal)"), "x");
+    await user.click(screen.getByRole("button", { name: "計画を作成" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/goal/);
+    expect(screen.getByRole("status")).not.toHaveTextContent("goal が空です");
+  });
+});
+
 describe("CodingPanel (rewind)", () => {
   it("履歴が無い (未計画) ときは戻すボタンが無効", () => {
     installAikaMock({});
