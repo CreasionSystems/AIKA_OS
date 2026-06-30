@@ -103,3 +103,51 @@ describe("SettingsPanel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/theme/);
   });
 });
+
+describe("SettingsPanel (状態サマリー live region)", () => {
+  it("サマリーは role=status / aria-live=polite / aria-atomic=true で読込後に存在する", async () => {
+    installAikaMock({});
+    render(<SettingsPanel />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("テーマ")).toHaveValue("system"),
+    );
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveAttribute("aria-atomic", "true");
+    expect(status).toHaveTextContent("未保存");
+  });
+
+  it("保存後にサマリーが『保存しました』になる", async () => {
+    installAikaMock({});
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("テーマ")).toHaveValue("system"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("保存しました"),
+    );
+  });
+
+  it("エラーは alert に出し、status には混ぜない", async () => {
+    installAikaMock({
+      saveSettings: async () => {
+        throw new SettingsValidationError([
+          { code: "INVALID_THEME", message: "theme が不正です。" },
+        ]);
+      },
+    });
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("テーマ")).toHaveValue("system"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/theme/);
+    expect(screen.getByRole("status")).not.toHaveTextContent("theme が不正です");
+  });
+});
