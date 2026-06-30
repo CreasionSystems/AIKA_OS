@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { getAikaApi } from "@preload/windowApi";
 import type { Job } from "@main/jobs/jobQueue";
-import type { ImageJobResult } from "@shared/inference/port";
+import type {
+  ImageJobResult,
+  VideoJobResult,
+  VideoKind,
+} from "@shared/inference/port";
 
 /**
  * メディアタブ (画像ジョブの境界 + ジョブ監視)。
@@ -13,6 +17,18 @@ import type { ImageJobResult } from "@shared/inference/port";
  * sleep / pollInterval / maxPolls は注入可能 (テストは待たずに決定的)。
  */
 type Phase = "idle" | "submitting" | "polling" | "refreshing" | "error";
+
+/** 種別: 画像 + 動画 5 種。 */
+type MediaKind = "image" | VideoKind;
+
+const KIND_OPTIONS: { value: MediaKind; label: string }[] = [
+  { value: "image", label: "画像" },
+  { value: "t2v", label: "動画: Text to Video" },
+  { value: "i2v", label: "動画: Image to Video" },
+  { value: "continuation", label: "動画: 継続" },
+  { value: "edit", label: "動画: 編集" },
+  { value: "audio", label: "動画: 音声駆動" },
+];
 
 const DEFAULT_POLL_INTERVAL = 500;
 const DEFAULT_MAX_POLLS = 60;
@@ -53,6 +69,7 @@ export function MediaPanel({
   maxPolls = DEFAULT_MAX_POLLS,
 }: MediaPanelProps = {}) {
   const [prompt, setPrompt] = useState("");
+  const [kind, setKind] = useState<MediaKind>("image");
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -86,7 +103,11 @@ export function MediaPanel({
     setError(null);
     setJob(null);
     try {
-      const id = await getAikaApi().submitImageJob({ prompt });
+      const api = getAikaApi();
+      const id =
+        kind === "image"
+          ? await api.submitImageJob({ prompt })
+          : await api.submitVideoJob({ kind, prompt });
       if (!mounted.current) return;
       setJobId(id);
       setPhase("polling");
@@ -113,10 +134,17 @@ export function MediaPanel({
     }
   }
 
-  const artifacts =
+  const result =
     job?.state === "succeeded"
-      ? (job.result as ImageJobResult | undefined)?.artifacts
+      ? (job.result as ImageJobResult | VideoJobResult | undefined)
       : undefined;
+  const artifacts = result?.artifacts;
+  const resultKind: VideoKind | undefined =
+    result !== undefined && "kind" in result
+      ? (result as VideoJobResult).kind
+      : undefined;
+
+  const submitLabel = kind === "image" ? "画像ジョブを投入" : "動画ジョブを投入";
 
   return (
     <section>
@@ -128,6 +156,19 @@ export function MediaPanel({
       </p>
 
       <form onSubmit={onSubmit}>
+        <label htmlFor="media-kind">種別</label>
+        <select
+          id="media-kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as MediaKind)}
+        >
+          {KIND_OPTIONS.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+
         <label htmlFor="media-prompt">プロンプト</label>
         <textarea
           id="media-prompt"
@@ -135,7 +176,7 @@ export function MediaPanel({
           onChange={(e) => setPrompt(e.target.value)}
         />
         <button type="submit" disabled={busy}>
-          {phase === "submitting" ? "投入中…" : "画像ジョブを投入"}
+          {phase === "submitting" ? "投入中…" : submitLabel}
         </button>
       </form>
 
@@ -150,6 +191,8 @@ export function MediaPanel({
       {error !== null && <p role="alert">{error}</p>}
 
       {jobId !== null && <p>ジョブID: {jobId}</p>}
+
+      {resultKind !== undefined && <p>種別: {resultKind}</p>}
 
       {artifacts && (
         <ul aria-label="生成物">

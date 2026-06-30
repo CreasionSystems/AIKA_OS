@@ -12,14 +12,16 @@ import type { Job } from "@main/jobs/jobQueue";
  */
 function installAikaMock(over: {
   submitImageJob?: AikaApi["submitImageJob"];
+  submitVideoJob?: AikaApi["submitVideoJob"];
   getJob?: AikaApi["getJob"];
 }) {
   const submitImageJob = vi.fn(over.submitImageJob ?? (async () => "job-1"));
+  const submitVideoJob = vi.fn(over.submitVideoJob ?? (async () => "job-1"));
   const getJob = vi.fn(over.getJob ?? (async () => undefined));
   (window as unknown as { aika: AikaApi }).aika = {
     generateText: vi.fn(),
     submitImageJob,
-    submitVideoJob: vi.fn(),
+    submitVideoJob,
     getJob,
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
@@ -29,7 +31,7 @@ function installAikaMock(over: {
     verifyCode: vi.fn(),
     rewindCode: vi.fn(),
   } as unknown as AikaApi;
-  return { submitImageJob, getJob };
+  return { submitImageJob, submitVideoJob, getJob };
 }
 
 /** 注入用: 待たない sleep。 */
@@ -57,6 +59,20 @@ const failedJob: Job = {
   startedAt: 2,
   finishedAt: 3,
   error: "backend exploded",
+};
+const videoSucceededJob: Job = {
+  id: "job-1",
+  state: "succeeded",
+  createdAt: 1,
+  startedAt: 2,
+  finishedAt: 3,
+  result: {
+    jobId: "media-1",
+    status: "succeeded",
+    backend: "dummy",
+    kind: "t2v",
+    artifacts: ["/var/lib/aika/artifacts/media-1.t2v.mp4"],
+  },
 };
 
 /** 呼び出しごとに配列の次要素 (末尾以降は最後の要素) を返す getJob。 */
@@ -159,5 +175,42 @@ describe("MediaPanel (自動ポーリング)", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/backend down/);
     expect(screen.getByRole("status")).not.toHaveTextContent("backend down");
+  });
+});
+
+describe("MediaPanel (種別選択 / 動画)", () => {
+  it("種別セレクタを持ち、既定は画像", () => {
+    installAikaMock({});
+    render(<MediaPanel sleep={instantSleep} />);
+    expect(screen.getByLabelText("種別")).toHaveValue("image");
+    expect(
+      screen.getByRole("button", { name: "画像ジョブを投入" }),
+    ).toBeInTheDocument();
+  });
+
+  it("動画(t2v)を選んで投入すると submitVideoJob を呼ぶ", async () => {
+    const { submitVideoJob, submitImageJob } = installAikaMock({
+      getJob: seqGetJob([queuedJob, videoSucceededJob]),
+    });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.selectOptions(screen.getByLabelText("種別"), "t2v");
+    await user.type(screen.getByLabelText("プロンプト"), "a dog runs");
+    await user.click(screen.getByRole("button", { name: "動画ジョブを投入" }));
+
+    expect(submitVideoJob).toHaveBeenCalledWith({
+      kind: "t2v",
+      prompt: "a dog runs",
+    });
+    expect(submitImageJob).not.toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+    );
+    expect(
+      screen.getByText("/var/lib/aika/artifacts/media-1.t2v.mp4"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("種別: t2v")).toBeInTheDocument();
   });
 });
