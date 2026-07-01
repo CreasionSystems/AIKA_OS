@@ -27,6 +27,7 @@ function installAikaMock() {
     executeCode: vi.fn(),
     verifyCode: vi.fn(),
     rewindCode: vi.fn(),
+    listJobs: vi.fn(async () => []),
   } as unknown as AikaApi;
 }
 

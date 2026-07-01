@@ -31,6 +31,8 @@ export interface JobQueueOptions {
   now?: () => number;
   /** ジョブ ID 生成。既定はインスタンス内の連番。 */
   idFactory?: () => string;
+  /** succeeded/failed に到達したジョブを通知する (履歴記録等)。 */
+  onSettle?: (job: Job) => void;
 }
 
 export class JobQueue {
@@ -38,10 +40,12 @@ export class JobQueue {
   private readonly settled = new Map<string, Promise<void>>();
   private readonly now: () => number;
   private readonly idFactory: () => string;
+  private readonly onSettle: ((job: Job) => void) | undefined;
 
   constructor(options: JobQueueOptions = {}) {
     this.now = options.now ?? (() => Date.now());
     this.idFactory = options.idFactory ?? JobQueue.defaultIdFactory();
+    this.onSettle = options.onSettle;
   }
 
   private static defaultIdFactory(): () => string {
@@ -72,6 +76,7 @@ export class JobQueue {
       job.error = err instanceof Error ? err.message : String(err);
     } finally {
       job.finishedAt = this.now();
+      this.onSettle?.(job as Job);
     }
   }
 

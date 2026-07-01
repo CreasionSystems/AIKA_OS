@@ -121,3 +121,22 @@ describe("list", () => {
     expect(q.list().length).toBe(2);
   });
 });
+
+describe("onSettle フック", () => {
+  it("succeeded / failed の双方で settled なジョブを通知する", async () => {
+    const settled: { id: string; state: string }[] = [];
+    const q = new JobQueue({
+      now: makeClock(),
+      idFactory: makeSeqIdFactory(),
+      onSettle: (job) => settled.push({ id: job.id, state: job.state }),
+    });
+
+    const okId = q.enqueue(() => Promise.resolve("ok"));
+    const ngId = q.enqueue(() => Promise.reject(new Error("boom")));
+    await q.whenSettled(okId);
+    await q.whenSettled(ngId);
+
+    expect(settled).toContainEqual({ id: okId, state: "succeeded" });
+    expect(settled).toContainEqual({ id: ngId, state: "failed" });
+  });
+});
