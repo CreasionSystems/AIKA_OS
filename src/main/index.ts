@@ -14,6 +14,7 @@ import { CodingWorkflow } from "./coding/codingWorkflow";
 import { SettingsService } from "@shared/settings/settings";
 import { FileSettingsStore } from "./settings/fileSettingsStore";
 import { JobHistory } from "@shared/jobs/jobHistory";
+import { FileJobHistoryStore } from "./jobs/fileJobHistoryStore";
 import type {
   ImageJobResult,
   VideoJobResult,
@@ -65,8 +66,14 @@ app.whenReady().then(async () => {
   const settingsService = buildSettingsService();
   const settings = await settingsService.load();
 
-  // ジョブ履歴 (メモリ常駐, jobHistoryLimit に従う FIFO)。
-  const history = new JobHistory(settings.jobHistoryLimit);
+  // ジョブ履歴 (File 永続化, jobHistoryLimit に従う FIFO)。
+  // ストアを差し替えれば Memory 運用にも切替できる。
+  const historyFile = path.join(app.getPath("userData"), "job-history.json");
+  const history = new JobHistory(
+    settings.jobHistoryLimit,
+    new FileJobHistoryStore(historyFile),
+  );
+  await history.init();
   const queue = new JobQueue({
     onSettle: (job) => recordMediaJob(history, job),
   });
