@@ -11,7 +11,7 @@ const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
  */
 test("coding: タブ -> 目標入力 -> 計画作成 -> 計画表示", async () => {
   const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
   const page = await app.firstWindow();
 

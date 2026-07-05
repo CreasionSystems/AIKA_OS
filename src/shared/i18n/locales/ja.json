@@ -1,0 +1,64 @@
+{
+  "nav": {
+    "label": "メインナビ",
+    "tab": {
+      "writing": "文章作成",
+      "settings": "設定",
+      "update": "更新",
+      "coding": "コーディング",
+      "media": "メディア"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "theme": {
+      "label": "テーマ",
+      "option": { "light": "ライト", "dark": "ダーク", "system": "システム" }
+    },
+    "writingMode": { "label": "既定の文章モード" },
+    "jobHistoryLimit": { "label": "ジョブ履歴の上限" },
+    "pollInterval": { "label": "メディア更新間隔（ms）" },
+    "language": {
+      "label": "表示言語",
+      "option": { "system": "システム設定に従う", "ja": "日本語", "en": "English" }
+    },
+    "action": { "save": "保存" },
+    "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "保存しました" }
+  },
+  "media": {
+    "title": "メディア",
+    "kind": {
+      "label": "種別",
+      "option": {
+        "image": "画像",
+        "t2v": "動画: Text to Video",
+        "i2v": "動画: Image to Video",
+        "continuation": "動画: 継続",
+        "edit": "動画: 編集",
+        "audio": "動画: 音声駆動"
+      }
+    },
+    "prompt": { "label": "プロンプト" },
+    "source": { "label": "元画像のパス" },
+    "action": {
+      "submitImage": "画像ジョブを投入",
+      "submitVideo": "動画ジョブを投入",
+      "submitting": "投入中…",
+      "refresh": "状態を更新"
+    },
+    "status": {
+      "idle": "未投入",
+      "submitting": "ジョブを投入中…",
+      "refreshing": "状態を更新中…",
+      "queued": "待機中",
+      "running": "実行中",
+      "succeeded": "完了しました",
+      "failed": "失敗しました"
+    },
+    "error": { "sourceRequired": "元画像のパスを入力してください。" },
+    "jobId": "ジョブID: {{id}}",
+    "result": { "kind": "種別: {{kind}}" },
+    "artifacts": { "label": "生成物" },
+    "history": { "title": "ジョブ履歴", "clear": "履歴をクリア" }
+  }
+}

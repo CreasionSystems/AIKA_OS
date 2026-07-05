@@ -24,6 +24,7 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.theme).toBe("system");
     expect(DEFAULT_SETTINGS.jobHistoryLimit).toBeGreaterThan(0);
     expect(DEFAULT_SETTINGS.mediaPollIntervalMs).toBeGreaterThan(0);
+    expect(DEFAULT_SETTINGS.language).toBe("system");
   });
 });
 
@@ -75,6 +76,20 @@ describe("validateSettings", () => {
   it("範囲内の mediaPollIntervalMs を受理する", () => {
     expect(validateSettings({ mediaPollIntervalMs: 1000 }).ok).toBe(true);
   });
+
+  it("不正な language を拒否する", () => {
+    const r = validateSettings({ language: "de" } as never);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.violations.map((v) => v.code)).toContain("INVALID_LANGUAGE");
+    }
+  });
+
+  it("有効な language (system/ja/en) を受理する", () => {
+    expect(validateSettings({ language: "system" }).ok).toBe(true);
+    expect(validateSettings({ language: "ja" }).ok).toBe(true);
+    expect(validateSettings({ language: "en" }).ok).toBe(true);
+  });
 });
 
 describe("SettingsService.load", () => {
@@ -96,12 +111,14 @@ describe("SettingsService.load", () => {
       theme: "dark",
       jobHistoryLimit: -5,
       mediaPollIntervalMs: 5,
+      language: "de",
     });
     const svc = new SettingsService(store);
     const s = await svc.load();
     expect(s.theme).toBe("dark");
     expect(s.jobHistoryLimit).toBe(DEFAULT_SETTINGS.jobHistoryLimit);
     expect(s.mediaPollIntervalMs).toBe(DEFAULT_SETTINGS.mediaPollIntervalMs);
+    expect(s.language).toBe(DEFAULT_SETTINGS.language);
   });
 });
 
