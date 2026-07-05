@@ -9,6 +9,7 @@ import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
 /** JobHistory が満たす最小インターフェース。 */
 export interface JobHistoryReader {
   list(): JobHistoryEntry[];
+  clear(): void;
 }
 
 export function registerJobsIpc(
@@ -16,4 +17,7 @@ export function registerJobsIpc(
   history: JobHistoryReader,
 ): void {
   ipcMain.handle(IPC_CHANNELS.listJobs, () => history.list());
+  ipcMain.handle(IPC_CHANNELS.clearJobs, () => {
+    history.clear();
+  });
 }

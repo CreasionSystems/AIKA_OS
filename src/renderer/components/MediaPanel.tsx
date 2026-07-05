@@ -113,6 +113,19 @@ export function MediaPanel({
     if (mounted.current && Array.isArray(entries)) setHistory(entries);
   }
 
+  async function onClearHistory() {
+    setError(null);
+    try {
+      await getAikaApi().clearJobs();
+      if (mounted.current) setHistory([]);
+    } catch (err) {
+      if (mounted.current) {
+        setError(err instanceof Error ? err.message : String(err));
+        setPhase("error");
+      }
+    }
+  }
+
   useEffect(() => {
     void refreshHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,6 +287,9 @@ export function MediaPanel({
       {history.length > 0 && (
         <div>
           <h2>ジョブ履歴</h2>
+          <button type="button" onClick={onClearHistory}>
+            履歴をクリア
+          </button>
           <ul aria-label="ジョブ履歴">
             {history.map((e, i) => (
               <li key={i}>
