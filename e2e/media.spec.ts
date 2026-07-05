@@ -11,7 +11,7 @@ const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
  */
 test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", async () => {
   const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
   const page = await app.firstWindow();
 
@@ -44,7 +44,7 @@ test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", as
 
 test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", async () => {
   const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
   const page = await app.firstWindow();
 
@@ -62,7 +62,7 @@ test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", asy
 
 test("media(video): i2v は元画像入力 -> 投入 -> 自動完了", async () => {
   const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
   const page = await app.firstWindow();
 

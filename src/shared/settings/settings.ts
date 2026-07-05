@@ -1,5 +1,6 @@
 import type { WritingMode } from "@shared/inference/port";
 import { isWritingMode } from "@shared/writing/writingModes";
+import { LANGUAGE_SETTINGS, type LanguageSetting } from "@shared/i18n/language";
 
 /**
  * アプリ一般設定のドメイン + 永続化抽象。
@@ -18,6 +19,8 @@ export interface AppSettings {
   jobHistoryLimit: number;
   /** メディアジョブ監視の自動ポーリング周期 (ms, 整数 100〜60000)。 */
   mediaPollIntervalMs: number;
+  /** UI 表示言語。将来 ko / zh-Hans / fr を追加予定。 */
+  language: LanguageSetting;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -25,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: "system",
   jobHistoryLimit: 50,
   mediaPollIntervalMs: 1000,
+  language: "system",
 };
 
 const THEMES: ThemeSetting[] = ["light", "dark", "system"];
@@ -37,7 +41,8 @@ export type SettingsViolationCode =
   | "INVALID_WRITING_MODE"
   | "INVALID_THEME"
   | "INVALID_JOB_HISTORY_LIMIT"
-  | "INVALID_POLL_INTERVAL";
+  | "INVALID_POLL_INTERVAL"
+  | "INVALID_LANGUAGE";
 
 export interface SettingsViolation {
   code: SettingsViolationCode;
@@ -65,6 +70,9 @@ function isValidPollIntervalMs(v: unknown): v is number {
     v >= POLL_INTERVAL_MIN &&
     v <= POLL_INTERVAL_MAX
   );
+}
+function isValidLanguage(v: unknown): v is LanguageSetting {
+  return typeof v === "string" && LANGUAGE_SETTINGS.includes(v as LanguageSetting);
 }
 
 /** 与えられた部分設定を検証する。present かつ不正な項目のみ違反にする。 */
@@ -104,6 +112,12 @@ export function validateSettings(
     violations.push({
       code: "INVALID_POLL_INTERVAL",
       message: `mediaPollIntervalMs は ${POLL_INTERVAL_MIN}〜${POLL_INTERVAL_MAX} の整数にしてください。`,
+    });
+  }
+  if (patch.language !== undefined && !isValidLanguage(patch.language)) {
+    violations.push({
+      code: "INVALID_LANGUAGE",
+      message: `language は ${LANGUAGE_SETTINGS.join(" / ")} のいずれかです。`,
     });
   }
 
@@ -146,6 +160,9 @@ function mergeWithDefaults(
     mediaPollIntervalMs: isValidPollIntervalMs(r.mediaPollIntervalMs)
       ? r.mediaPollIntervalMs
       : DEFAULT_SETTINGS.mediaPollIntervalMs,
+    language: isValidLanguage(r.language)
+      ? r.language
+      : DEFAULT_SETTINGS.language,
   };
 }
 

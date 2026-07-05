@@ -15,7 +15,7 @@ test("smoke: 起動 -> 最初のウィンドウ -> window.aika.generateText", as
   // Linux/コンテナでは xvfb 配下で実行する (e2e スクリプト参照)。
   // --no-sandbox は root 実行のため必須。
   const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
 
   // 1 & 2: 最初のウィンドウが開く

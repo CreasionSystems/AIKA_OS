@@ -11,7 +11,7 @@ const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
  */
 test("settings: getSettings -> saveSettings -> getSettings 往復", async () => {
   const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu"],
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
   const page = await app.firstWindow();
   // シェルの設定タブへ切り替えてからパネルを確認する。
