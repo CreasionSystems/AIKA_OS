@@ -72,6 +72,14 @@ export class JobHistory {
     }
   }
 
+  /** 履歴を空にし、ストアへも空を永続化する。 */
+  clear(): void {
+    this.entries = [];
+    if (this.store) {
+      this.pending = this.pending.then(() => this.store!.save([]));
+    }
+  }
+
   /** 保留中の永続化が完了するまで待つ (テスト用)。 */
   whenIdle(): Promise<void> {
     return this.pending;

@@ -75,4 +75,16 @@ describe("JobHistory (ストア連携)", () => {
     h.record(entry("1"));
     expect(h.list().map((e) => e.jobId)).toEqual(["1"]);
   });
+
+  it("clear で空にし、ストアにも空を永続化する", async () => {
+    const store = new MemoryJobHistoryStore([entry("1"), entry("2")]);
+    const h = new JobHistory(5, store);
+    await h.init();
+    expect(h.size).toBe(2);
+
+    h.clear();
+    expect(h.list()).toEqual([]);
+    await h.whenIdle();
+    expect(await store.load()).toEqual([]);
+  });
 });

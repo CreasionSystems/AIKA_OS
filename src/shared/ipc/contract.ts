@@ -29,6 +29,7 @@ export const IPC_CHANNELS = {
   verifyCode: "aika:coding:verify",
   rewindCode: "aika:coding:rewind",
   listJobs: "aika:jobs:list",
+  clearJobs: "aika:jobs:clear",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -55,4 +56,6 @@ export interface AikaApi {
   rewindCode(): Promise<CodingView>;
   /** 完了ジョブ履歴を新しい順で返す。 */
   listJobs(): Promise<JobHistoryEntry[]>;
+  /** ジョブ履歴を消去する。 */
+  clearJobs(): Promise<void>;
 }

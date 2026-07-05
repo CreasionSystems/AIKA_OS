@@ -59,6 +59,7 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.rewindCode) as Promise<CodingView>,
     listJobs: () =>
       invoke(IPC_CHANNELS.listJobs) as Promise<JobHistoryEntry[]>,
+    clearJobs: () => invoke(IPC_CHANNELS.clearJobs) as Promise<void>,
   };
 }
 

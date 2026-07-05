@@ -21,10 +21,23 @@ function makeFakeIpc() {
 }
 
 describe("registerJobsIpc", () => {
-  it("listJobs チャンネルを handle する", () => {
+  it("listJobs / clearJobs チャンネルを handle する", () => {
     const { ipcMain, handlers } = makeFakeIpc();
     registerJobsIpc(ipcMain, new JobHistory(5));
-    expect([...handlers.keys()]).toEqual([IPC_CHANNELS.listJobs]);
+    expect([...handlers.keys()].sort()).toEqual(
+      [IPC_CHANNELS.listJobs, IPC_CHANNELS.clearJobs].sort(),
+    );
+  });
+
+  it("clearJobs は履歴を空にする", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const history = new JobHistory(5);
+    history.record({ jobId: "job-1", state: "succeeded" });
+    registerJobsIpc(ipcMain, history);
+    const api = createAikaApi(invoke);
+
+    await api.clearJobs();
+    expect(await api.listJobs()).toEqual([]);
   });
 
   it("listJobs は履歴を新しい順で返す", async () => {

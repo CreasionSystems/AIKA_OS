@@ -33,6 +33,12 @@ test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", as
     page.getByRole("list", { name: "ジョブ履歴" }),
   ).toBeVisible({ timeout: 15_000 });
 
+  // 履歴をクリアすると一覧が消える。
+  await page.getByRole("button", { name: "履歴をクリア" }).click();
+  await expect(
+    page.getByRole("list", { name: "ジョブ履歴" }),
+  ).toBeHidden({ timeout: 15_000 });
+
   await app.close();
 });
 

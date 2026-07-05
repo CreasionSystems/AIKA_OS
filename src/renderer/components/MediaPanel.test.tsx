@@ -23,6 +23,7 @@ function installAikaMock(over: {
   getJob?: AikaApi["getJob"];
   getSettings?: AikaApi["getSettings"];
   listJobs?: AikaApi["listJobs"];
+  clearJobs?: AikaApi["clearJobs"];
 }) {
   const submitImageJob = vi.fn(over.submitImageJob ?? (async () => "job-1"));
   const submitVideoJob = vi.fn(over.submitVideoJob ?? (async () => "job-1"));
@@ -31,6 +32,7 @@ function installAikaMock(over: {
     over.getSettings ?? (async () => DEFAULT_SETTINGS),
   );
   const listJobs = vi.fn(over.listJobs ?? (async () => []));
+  const clearJobs = vi.fn(over.clearJobs ?? (async () => {}));
   (window as unknown as { aika: AikaApi }).aika = {
     generateText: vi.fn(),
     submitImageJob,
@@ -44,8 +46,9 @@ function installAikaMock(over: {
     verifyCode: vi.fn(),
     rewindCode: vi.fn(),
     listJobs,
+    clearJobs,
   } as unknown as AikaApi;
-  return { submitImageJob, submitVideoJob, getJob, listJobs };
+  return { submitImageJob, submitVideoJob, getJob, listJobs, clearJobs };
 }
 
 /** 注入用: 待たない sleep。 */
@@ -218,6 +221,28 @@ describe("MediaPanel (ジョブ履歴)", () => {
     expect(within(histList).getByText(/job-1/)).toBeInTheDocument();
     // 履歴本文 (jobId) を live region には出さない
     expect(screen.getByRole("status")).not.toHaveTextContent("job-1");
+  });
+
+  it("履歴をクリアすると clearJobs を呼び、履歴が消える", async () => {
+    const { clearJobs } = installAikaMock({
+      getJob: seqGetJob([queuedJob, succeededJob]),
+      listJobs: async () => [{ jobId: "job-1", state: "succeeded" }],
+    });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+
+    await user.type(screen.getByLabelText("プロンプト"), "a cat");
+    await user.click(screen.getByRole("button", { name: "画像ジョブを投入" }));
+    await screen.findByRole("list", { name: "ジョブ履歴" });
+
+    await user.click(screen.getByRole("button", { name: "履歴をクリア" }));
+
+    expect(clearJobs).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("list", { name: "ジョブ履歴" }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });
 
