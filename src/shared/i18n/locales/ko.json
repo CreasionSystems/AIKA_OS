@@ -27,7 +27,17 @@
   },
   "media": {
     "title": "미디어",
-    "kind": { "label": "종류" },
+    "kind": {
+      "label": "종류",
+      "option": {
+        "image": "이미지",
+        "t2v": "동영상: Text to Video",
+        "i2v": "동영상: Image to Video",
+        "continuation": "동영상: 이어가기",
+        "edit": "동영상: 편집",
+        "audio": "동영상: 오디오 구동"
+      }
+    },
     "prompt": { "label": "프롬프트" },
     "source": { "label": "원본 이미지 경로" },
     "action": {

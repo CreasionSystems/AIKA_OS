@@ -27,7 +27,17 @@
   },
   "media": {
     "title": "Média",
-    "kind": { "label": "Type" },
+    "kind": {
+      "label": "Type",
+      "option": {
+        "image": "Image",
+        "t2v": "Vidéo : Text to Video",
+        "i2v": "Vidéo : Image to Video",
+        "continuation": "Vidéo : Continuation",
+        "edit": "Vidéo : Montage",
+        "audio": "Vidéo : Piloté par audio"
+      }
+    },
     "prompt": { "label": "Invite" },
     "source": { "label": "Chemin de l'image source" },
     "action": {
