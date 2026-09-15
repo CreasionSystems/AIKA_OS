@@ -59,7 +59,45 @@
     "jobId": "Job ID: {{id}}",
     "result": { "kind": "Type: {{kind}}" },
     "artifacts": { "label": "Artifacts" },
-    "history": { "title": "Job history", "clear": "Clear history" }
+    "history": { "title": "Job history", "clear": "Clear history" },
+    "composer": {
+      "instruction": {
+        "label": "What video do you want to make?",
+        "placeholder": "e.g. A golden retriever walking on a beach at dusk, cinematic, 10 seconds, slow motion"
+      },
+      "action": {
+        "compose": "Organize the idea",
+        "continue": "Continue",
+        "send": "Send with this",
+        "retry": "Retry",
+        "redo": "Rewrite",
+        "reset": "Start new"
+      },
+      "followup": { "title": "Tell me a bit more" },
+      "chips": { "title": "Suggestions" },
+      "summary": { "title": "Summary" },
+      "finalPrompt": { "label": "Final prompt draft (editable)" },
+      "status": {
+        "idle": "Enter what you want to make",
+        "validating": "Reviewing your input…",
+        "followup": "Please add a few details",
+        "ready": "Your prompt draft is ready",
+        "sending": "Sending…",
+        "success": "Sent",
+        "error": "An error occurred"
+      },
+      "question": {
+        "subject": "What is the subject? (who or what, and the scene)",
+        "motion": "Any preference for motion or camera work?",
+        "style": "What mood or style?"
+      },
+      "chip": {
+        "cinematic": "Cinematic",
+        "anime": "Anime style",
+        "slowMotion": "Slow motion",
+        "aerial": "Aerial shot"
+      }
+    }
   },
   "writing": {
     "title": "Writing",

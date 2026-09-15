@@ -297,8 +297,8 @@ describe("MediaPanel (ポーリング間隔の設定連携)", () => {
   });
 });
 
-describe("MediaPanel (種別選択 / 動画)", () => {
-  it("種別セレクタを持ち、既定は画像", () => {
+describe("MediaPanel (種別選択 / 動画コンポーザ)", () => {
+  it("種別セレクタを持ち、既定は画像 (画像投入ボタン)", () => {
     installAikaMock({});
     render(<MediaPanel sleep={instantSleep} />);
     expect(screen.getByLabelText("種別")).toHaveValue("image");
@@ -307,7 +307,7 @@ describe("MediaPanel (種別選択 / 動画)", () => {
     ).toBeInTheDocument();
   });
 
-  it("動画(t2v)を選んで投入すると submitVideoJob を呼ぶ", async () => {
+  it("動画(t2v): 自由指示 -> まとめる -> 送信で submitVideoJob を呼ぶ", async () => {
     const { submitVideoJob, submitImageJob } = installAikaMock({
       getJob: seqGetJob([queuedJob, videoSucceededJob]),
     });
@@ -315,65 +315,73 @@ describe("MediaPanel (種別選択 / 動画)", () => {
     render(<MediaPanel sleep={instantSleep} />);
 
     await user.selectOptions(screen.getByLabelText("種別"), "t2v");
-    await user.type(screen.getByLabelText("プロンプト"), "a dog runs");
-    await user.click(screen.getByRole("button", { name: "動画ジョブを投入" }));
+    // 画像用の投入ボタンは動画では出ない
+    expect(
+      screen.queryByRole("button", { name: "画像ジョブを投入" }),
+    ).not.toBeInTheDocument();
 
-    expect(submitVideoJob).toHaveBeenCalledWith({
-      kind: "t2v",
-      prompt: "a dog runs",
-    });
-    expect(submitImageJob).not.toHaveBeenCalled();
+    await user.type(
+      screen.getByLabelText("作りたい動画の内容"),
+      "夕暮れの街を走る車をシネマティックに",
+    );
+    await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
+    await user.click(
+      await screen.findByRole("button", { name: "この内容で送信" }),
+    );
 
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+      expect(submitVideoJob).toHaveBeenCalledWith({
+        kind: "t2v",
+        prompt: "夕暮れの街を走る車をシネマティックに",
+      }),
     );
+    expect(submitImageJob).not.toHaveBeenCalled();
+
     expect(
-      screen.getByText("/var/lib/aika/artifacts/media-1.t2v.mp4"),
+      await screen.findByText("/var/lib/aika/artifacts/media-1.t2v.mp4"),
     ).toBeInTheDocument();
     expect(screen.getByText("種別: t2v")).toBeInTheDocument();
   });
 });
 
-describe("MediaPanel (sourceImage 入力)", () => {
-  it("source 必須の種別 (i2v) でのみ sourceImage 欄を表示する", async () => {
+describe("MediaPanel (動画 sourceImage 入力)", () => {
+  const SUFFICIENT = "静止画を動かしてゆっくりズーム";
+
+  it("source 必須の i2v では ready で元画像欄を表示する", async () => {
     installAikaMock({});
     const user = userEvent.setup();
     render(<MediaPanel sleep={instantSleep} />);
 
-    // 画像・t2v では非表示
-    expect(screen.queryByLabelText("元画像のパス")).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("種別"), "t2v");
-    expect(screen.queryByLabelText("元画像のパス")).not.toBeInTheDocument();
-
-    // i2v では可視ラベル付きで表示
     await user.selectOptions(screen.getByLabelText("種別"), "i2v");
-    expect(screen.getByLabelText("元画像のパス")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
+    await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
+
+    expect(await screen.findByLabelText("元画像のパス")).toBeInTheDocument();
   });
 
-  it("i2v で sourceImage 未入力なら投入を阻止し、入力に検証を関連付ける", async () => {
+  it("i2v で source 未入力なら投入を阻止し、入力に検証を関連付ける", async () => {
     const { submitVideoJob } = installAikaMock({});
     const user = userEvent.setup();
     render(<MediaPanel sleep={instantSleep} />);
 
     await user.selectOptions(screen.getByLabelText("種別"), "i2v");
-    await user.type(screen.getByLabelText("プロンプト"), "x");
-    await user.click(screen.getByRole("button", { name: "動画ジョブを投入" }));
+    await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
+    await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
+    await user.click(
+      await screen.findByRole("button", { name: "この内容で送信" }),
+    );
 
     expect(submitVideoJob).not.toHaveBeenCalled();
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/元画像/);
-
     const input = screen.getByLabelText("元画像のパス");
     expect(input).toHaveAttribute("aria-invalid", "true");
-    // エラーは aria-describedby で入力に関連付ける
     const describedby = input.getAttribute("aria-describedby");
     expect(describedby).toBeTruthy();
     expect(alert).toHaveAttribute("id", describedby as string);
-    // 状態 live region にはエラーを混ぜない
-    expect(screen.getByRole("status")).not.toHaveTextContent("元画像");
   });
 
-  it("i2v で sourceImage を入力すると submitVideoJob に含めて投入する", async () => {
+  it("i2v で source を入力すると submitVideoJob に含めて投入する", async () => {
     const { submitVideoJob } = installAikaMock({
       getJob: seqGetJob([queuedJob, videoSucceededJob]),
     });
@@ -381,17 +389,20 @@ describe("MediaPanel (sourceImage 入力)", () => {
     render(<MediaPanel sleep={instantSleep} />);
 
     await user.selectOptions(screen.getByLabelText("種別"), "i2v");
-    await user.type(screen.getByLabelText("プロンプト"), "make it move");
-    await user.type(screen.getByLabelText("元画像のパス"), "/abs/in.png");
-    await user.click(screen.getByRole("button", { name: "動画ジョブを投入" }));
+    await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
+    await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
+    await user.type(
+      await screen.findByLabelText("元画像のパス"),
+      "/abs/in.png",
+    );
+    await user.click(screen.getByRole("button", { name: "この内容で送信" }));
 
-    expect(submitVideoJob).toHaveBeenCalledWith({
-      kind: "i2v",
-      prompt: "make it move",
-      sourceImage: "/abs/in.png",
-    });
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("完了しました"),
+      expect(submitVideoJob).toHaveBeenCalledWith({
+        kind: "i2v",
+        prompt: SUFFICIENT,
+        sourceImage: "/abs/in.png",
+      }),
     );
   });
 });

@@ -59,7 +59,45 @@
     "jobId": "작업 ID: {{id}}",
     "result": { "kind": "종류: {{kind}}" },
     "artifacts": { "label": "생성물" },
-    "history": { "title": "작업 기록", "clear": "기록 지우기" }
+    "history": { "title": "작업 기록", "clear": "기록 지우기" },
+    "composer": {
+      "instruction": {
+        "label": "만들고 싶은 동영상 내용",
+        "placeholder": "예: 해질 무렵 해변을 걷는 골든 리트리버를 시네마틱하게 10초, 슬로 모션으로"
+      },
+      "action": {
+        "compose": "내용 정리하기",
+        "continue": "계속",
+        "send": "이 내용으로 보내기",
+        "retry": "다시 시도",
+        "redo": "다시 쓰기",
+        "reset": "새로 만들기"
+      },
+      "followup": { "title": "조금 더 알려 주세요" },
+      "chips": { "title": "추천" },
+      "summary": { "title": "요약" },
+      "finalPrompt": { "label": "최종 프롬프트 초안 (편집 가능)" },
+      "status": {
+        "idle": "내용을 입력하세요",
+        "validating": "입력을 확인하는 중…",
+        "followup": "추가 정보를 입력해 주세요",
+        "ready": "프롬프트 초안이 준비되었습니다",
+        "sending": "보내는 중…",
+        "success": "보냈습니다",
+        "error": "오류가 발생했습니다"
+      },
+      "question": {
+        "subject": "주제는 무엇인가요? (대상·장면)",
+        "motion": "움직임이나 카메라 워크에 대한 희망은?",
+        "style": "분위기나 스타일은?"
+      },
+      "chip": {
+        "cinematic": "시네마틱",
+        "anime": "애니메이션풍",
+        "slowMotion": "슬로 모션",
+        "aerial": "항공 촬영"
+      }
+    }
   },
   "writing": {
     "title": "글쓰기",

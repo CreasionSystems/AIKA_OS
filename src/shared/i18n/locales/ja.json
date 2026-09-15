@@ -59,7 +59,45 @@
     "jobId": "ジョブID: {{id}}",
     "result": { "kind": "種別: {{kind}}" },
     "artifacts": { "label": "生成物" },
-    "history": { "title": "ジョブ履歴", "clear": "履歴をクリア" }
+    "history": { "title": "ジョブ履歴", "clear": "履歴をクリア" },
+    "composer": {
+      "instruction": {
+        "label": "作りたい動画の内容",
+        "placeholder": "例: 夕暮れの海辺を歩くゴールデンレトリバーを、シネマティックに10秒、スローモーションで"
+      },
+      "action": {
+        "compose": "内容をまとめる",
+        "continue": "続ける",
+        "send": "この内容で送信",
+        "retry": "再試行",
+        "redo": "書き直す",
+        "reset": "新しく作成"
+      },
+      "followup": { "title": "もう少し教えてください" },
+      "chips": { "title": "候補" },
+      "summary": { "title": "要約" },
+      "finalPrompt": { "label": "最終プロンプト案（編集できます）" },
+      "status": {
+        "idle": "内容を入力してください",
+        "validating": "内容を確認中…",
+        "followup": "補足を入力してください",
+        "ready": "プロンプト案ができました",
+        "sending": "送信中…",
+        "success": "送信しました",
+        "error": "エラーが発生しました"
+      },
+      "question": {
+        "subject": "主題は何ですか？（被写体・場面）",
+        "motion": "動きやカメラワークの希望は？",
+        "style": "雰囲気やスタイルは？"
+      },
+      "chip": {
+        "cinematic": "シネマティック",
+        "anime": "アニメ調",
+        "slowMotion": "スローモーション",
+        "aerial": "空撮"
+      }
+    }
   },
   "writing": {
     "title": "文章作成",
