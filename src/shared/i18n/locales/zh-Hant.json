@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "label": "主導覽",
+    "tab": {
+      "writing": "寫作",
+      "settings": "設定",
+      "update": "更新",
+      "coding": "程式設計",
+      "media": "媒體"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "theme": {
+      "label": "主題",
+      "option": { "light": "淺色", "dark": "深色", "system": "跟隨系統" }
+    },
+    "writingMode": { "label": "預設寫作模式" },
+    "jobHistoryLimit": { "label": "工作記錄上限" },
+    "pollInterval": { "label": "媒體重新整理間隔（毫秒）" },
+    "language": {
+      "label": "顯示語言",
+      "option": { "system": "跟隨系統設定", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
+    },
+    "action": { "save": "儲存" },
+    "status": { "unsaved": "未儲存", "saving": "儲存中…", "saved": "已儲存" }
+  },
+  "media": {
+    "title": "媒體",
+    "kind": { "label": "類型" },
+    "prompt": { "label": "提示詞" },
+    "source": { "label": "來源圖片路徑" },
+    "action": {
+      "submitImage": "提交圖片工作",
+      "submitVideo": "提交影片工作",
+      "submitting": "提交中…",
+      "refresh": "重新整理狀態"
+    },
+    "status": {
+      "idle": "未提交",
+      "submitting": "正在提交工作…",
+      "refreshing": "正在重新整理…",
+      "queued": "佇列中",
+      "running": "執行中",
+      "succeeded": "已完成",
+      "failed": "已失敗"
+    },
+    "error": { "sourceRequired": "請輸入來源圖片路徑。" },
+    "jobId": "工作 ID：{{id}}",
+    "result": { "kind": "類型：{{kind}}" },
+    "artifacts": { "label": "產物" },
+    "history": { "title": "工作記錄", "clear": "清除記錄" }
+  }
+}

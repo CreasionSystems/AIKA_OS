@@ -46,3 +46,43 @@ test("i18n: 設定で言語切替 -> ナビ / Media が選択言語になる", a
 
   await app.close();
 });
+
+/**
+ * フランス語切替: 文言が最も伸びる言語で主要導線が表示され、
+ * 未訳キー (動画種別ラベル) は en フォールバックされることを固定する。
+ */
+test("i18n: 設定で言語切替 -> French + 未訳は en フォールバック", async () => {
+  const app = await electron.launch({
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
+  });
+  const page = await app.firstWindow();
+
+  await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "設定" })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // 表示言語を Français に切り替える。
+  await page.getByLabel("表示言語").selectOption("fr");
+
+  // ナビ / Settings がフランス語 (英語より長い文言でも導線が保たれる)。
+  await expect(page.getByRole("tab", { name: "Média" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByRole("heading", { name: "Paramètres" }),
+  ).toBeVisible();
+
+  // Media タブの主要ボタンがフランス語。
+  await page.getByRole("tab", { name: "Média" }).click();
+  await expect(
+    page.getByRole("button", { name: "Lancer la tâche d'image" }),
+  ).toBeVisible();
+
+  // 未訳の動画種別ラベルは en へフォールバックする。
+  await expect(
+    page.getByRole("option", { name: "Video: Text to Video" }),
+  ).toBeAttached();
+
+  await app.close();
+});

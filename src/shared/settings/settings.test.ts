@@ -90,6 +90,13 @@ describe("validateSettings", () => {
     expect(validateSettings({ language: "ja" }).ok).toBe(true);
     expect(validateSettings({ language: "en" }).ok).toBe(true);
   });
+
+  it("追加言語 (ko/zh-Hans/zh-Hant/fr) を受理する", () => {
+    expect(validateSettings({ language: "ko" }).ok).toBe(true);
+    expect(validateSettings({ language: "zh-Hans" }).ok).toBe(true);
+    expect(validateSettings({ language: "zh-Hant" }).ok).toBe(true);
+    expect(validateSettings({ language: "fr" }).ok).toBe(true);
+  });
 });
 
 describe("SettingsService.load", () => {

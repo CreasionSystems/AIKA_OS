@@ -20,7 +20,7 @@
     "pollInterval": { "label": "メディア更新間隔（ms）" },
     "language": {
       "label": "表示言語",
-      "option": { "system": "システム設定に従う", "ja": "日本語", "en": "English" }
+      "option": { "system": "システム設定に従う", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "保存" },
     "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "保存しました" }

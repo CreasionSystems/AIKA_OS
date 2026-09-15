@@ -20,7 +20,7 @@
     "pollInterval": { "label": "Media refresh interval (ms)" },
     "language": {
       "label": "Language",
-      "option": { "system": "Follow system setting", "ja": "日本語", "en": "English" }
+      "option": { "system": "Follow system setting", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "Save" },
     "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved" }
