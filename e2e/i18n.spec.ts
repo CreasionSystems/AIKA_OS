@@ -49,9 +49,9 @@ test("i18n: 設定で言語切替 -> ナビ / Media が選択言語になる", a
 
 /**
  * フランス語切替: 文言が最も伸びる言語で主要導線が表示され、
- * 未訳キー (動画種別ラベル) は en フォールバックされることを固定する。
+ * 動画種別ラベルも実訳されることを固定する。
  */
-test("i18n: 設定で言語切替 -> French + 未訳は en フォールバック", async () => {
+test("i18n: 設定で言語切替 -> French (動画種別も実訳)", async () => {
   const app = await electron.launch({
     args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
@@ -79,9 +79,9 @@ test("i18n: 設定で言語切替 -> French + 未訳は en フォールバック
     page.getByRole("button", { name: "Lancer la tâche d'image" }),
   ).toBeVisible();
 
-  // 未訳の動画種別ラベルは en へフォールバックする。
+  // 動画種別ラベルもフランス語で表示される (実訳済み)。
   await expect(
-    page.getByRole("option", { name: "Video: Text to Video" }),
+    page.getByRole("option", { name: "Vidéo : Text to Video" }),
   ).toBeAttached();
 
   await app.close();

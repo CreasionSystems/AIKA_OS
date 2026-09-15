@@ -27,7 +27,17 @@
   },
   "media": {
     "title": "媒体",
-    "kind": { "label": "类型" },
+    "kind": {
+      "label": "类型",
+      "option": {
+        "image": "图像",
+        "t2v": "视频：Text to Video",
+        "i2v": "视频：Image to Video",
+        "continuation": "视频：续接",
+        "edit": "视频：编辑",
+        "audio": "视频：音频驱动"
+      }
+    },
     "prompt": { "label": "提示词" },
     "source": { "label": "源图像路径" },
     "action": {

@@ -27,7 +27,17 @@
   },
   "media": {
     "title": "媒體",
-    "kind": { "label": "類型" },
+    "kind": {
+      "label": "類型",
+      "option": {
+        "image": "圖片",
+        "t2v": "影片：Text to Video",
+        "i2v": "影片：Image to Video",
+        "continuation": "影片：接續",
+        "edit": "影片：編輯",
+        "audio": "影片：音訊驅動"
+      }
+    },
     "prompt": { "label": "提示詞" },
     "source": { "label": "來源圖片路徑" },
     "action": {

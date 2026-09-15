@@ -67,6 +67,12 @@ const REQUIRED_KEYS = [
   "settings.status.saved",
   "media.title",
   "media.kind.label",
+  "media.kind.option.image",
+  "media.kind.option.t2v",
+  "media.kind.option.i2v",
+  "media.kind.option.continuation",
+  "media.kind.option.edit",
+  "media.kind.option.audio",
   "media.prompt.label",
   "media.source.label",
   "media.action.submitImage",
@@ -149,15 +155,18 @@ describe("ロケール資源の完全性", () => {
     });
   }
 
-  it("追加言語は media.kind.option を持たず en フォールバックに委ねる", () => {
-    // 段階導入の境界: 動画種別ラベルは当面 en へ委ねる。
-    for (const name of ["ko", "zh-Hans", "zh-Hant", "fr"]) {
-      expect(
-        get(LOCALES[name] as Json, "media.kind.option.t2v"),
-        name,
-      ).toBeUndefined();
+  it("全ロケールが動画種別ラベル (media.kind.option) を実訳で持つ", () => {
+    // Step 39 で 4 追加言語も実訳し、en フォールバックへの依存を解消した。
+    const kinds = ["image", "t2v", "i2v", "continuation", "edit", "audio"];
+    for (const name of Object.keys(LOCALES)) {
+      for (const k of kinds) {
+        const v = get(LOCALES[name] as Json, `media.kind.option.${k}`);
+        expect(v, `${name}.media.kind.option.${k}`).toBeTypeOf("string");
+        expect(
+          (v as string).length,
+          `${name}.media.kind.option.${k}`,
+        ).toBeGreaterThan(0);
+      }
     }
-    // en は全キーを持つのでフォールバック元になれる。
-    expect(get(en, "media.kind.option.t2v")).toBeTypeOf("string");
   });
 });
