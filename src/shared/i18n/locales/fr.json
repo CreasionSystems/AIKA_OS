@@ -59,7 +59,45 @@
     "jobId": "ID de tâche : {{id}}",
     "result": { "kind": "Type : {{kind}}" },
     "artifacts": { "label": "Artefacts" },
-    "history": { "title": "Historique des tâches", "clear": "Effacer l'historique" }
+    "history": { "title": "Historique des tâches", "clear": "Effacer l'historique" },
+    "composer": {
+      "instruction": {
+        "label": "Quelle vidéo voulez-vous créer ?",
+        "placeholder": "ex. : un golden retriever marchant sur une plage au crépuscule, cinématique, 10 secondes, au ralenti"
+      },
+      "action": {
+        "compose": "Organiser l'idée",
+        "continue": "Continuer",
+        "send": "Envoyer ainsi",
+        "retry": "Réessayer",
+        "redo": "Réécrire",
+        "reset": "Nouveau"
+      },
+      "followup": { "title": "Donnez-moi un peu plus de détails" },
+      "chips": { "title": "Suggestions" },
+      "summary": { "title": "Résumé" },
+      "finalPrompt": { "label": "Brouillon d'invite finale (modifiable)" },
+      "status": {
+        "idle": "Saisissez ce que vous voulez créer",
+        "validating": "Analyse de votre saisie…",
+        "followup": "Veuillez ajouter quelques détails",
+        "ready": "Votre brouillon d'invite est prêt",
+        "sending": "Envoi…",
+        "success": "Envoyé",
+        "error": "Une erreur s'est produite"
+      },
+      "question": {
+        "subject": "Quel est le sujet ? (qui ou quoi, et la scène)",
+        "motion": "Une préférence pour le mouvement ou le travail de caméra ?",
+        "style": "Quelle ambiance ou quel style ?"
+      },
+      "chip": {
+        "cinematic": "Cinématique",
+        "anime": "Style anime",
+        "slowMotion": "Ralenti",
+        "aerial": "Vue aérienne"
+      }
+    }
   },
   "writing": {
     "title": "Rédaction",

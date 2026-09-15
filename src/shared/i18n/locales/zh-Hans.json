@@ -59,7 +59,45 @@
     "jobId": "任务 ID：{{id}}",
     "result": { "kind": "类型：{{kind}}" },
     "artifacts": { "label": "生成物" },
-    "history": { "title": "任务历史", "clear": "清除历史" }
+    "history": { "title": "任务历史", "clear": "清除历史" },
+    "composer": {
+      "instruction": {
+        "label": "想制作的视频内容",
+        "placeholder": "例如：黄昏海边散步的金毛犬，电影感，10 秒，慢动作"
+      },
+      "action": {
+        "compose": "整理内容",
+        "continue": "继续",
+        "send": "以此发送",
+        "retry": "重试",
+        "redo": "重新填写",
+        "reset": "新建"
+      },
+      "followup": { "title": "请再补充一些" },
+      "chips": { "title": "建议" },
+      "summary": { "title": "摘要" },
+      "finalPrompt": { "label": "最终提示词草稿（可编辑）" },
+      "status": {
+        "idle": "请输入内容",
+        "validating": "正在确认输入…",
+        "followup": "请补充一些细节",
+        "ready": "提示词草稿已就绪",
+        "sending": "发送中…",
+        "success": "已发送",
+        "error": "发生错误"
+      },
+      "question": {
+        "subject": "主题是什么？（主体·场景）",
+        "motion": "对动作或运镜有何要求？",
+        "style": "氛围或风格如何？"
+      },
+      "chip": {
+        "cinematic": "电影感",
+        "anime": "动漫风",
+        "slowMotion": "慢动作",
+        "aerial": "航拍"
+      }
+    }
   },
   "writing": {
     "title": "写作",

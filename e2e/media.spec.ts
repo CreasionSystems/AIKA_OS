@@ -42,7 +42,7 @@ test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", as
   await app.close();
 });
 
-test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", async () => {
+test("media(video): 自由指示 -> 補足質問 -> 最終確認 -> 送信 (t2v)", async () => {
   const app = await electron.launch({
     args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
@@ -50,17 +50,33 @@ test("media(video): 種別 t2v -> 投入 -> 自動完了 + 動画生成物", asy
 
   await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
   await page.getByLabel("種別").selectOption("t2v");
-  await page.getByLabel("プロンプト").fill("a dog runs");
-  await page.getByRole("button", { name: "動画ジョブを投入" }).click();
 
-  await expect(page.getByText("完了しました")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("種別: t2v")).toBeVisible();
+  // 曖昧な自由指示 -> まとめる -> 補足質問が出る
+  await page.getByLabel("作りたい動画の内容").fill("犬");
+  await page.getByRole("button", { name: "内容をまとめる" }).click();
+  await expect(
+    page.getByText("主題は何ですか？（被写体・場面）"),
+  ).toBeVisible({ timeout: 15_000 });
+
+  // 補足に答えて続ける -> 最終プロンプト案を確認 -> 送信
+  await page
+    .getByLabel("主題は何ですか？（被写体・場面）")
+    .fill("夜の街を走る車をシネマティックに");
+  await page.getByRole("button", { name: "続ける" }).click();
+  await expect(page.getByLabel("最終プロンプト案（編集できます）")).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByRole("button", { name: "この内容で送信" }).click();
+
+  // 送信後、ジョブが完了し動画生成物 + 種別が表示される
+  await expect(page.getByText("送信しました")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("種別: t2v")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/\.mp4/).first()).toBeVisible();
 
   await app.close();
 });
 
-test("media(video): i2v は元画像入力 -> 投入 -> 自動完了", async () => {
+test("media(video): i2v は十分な指示 + 元画像入力 -> 送信 -> 自動完了", async () => {
   const app = await electron.launch({
     args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
   });
@@ -68,12 +84,17 @@ test("media(video): i2v は元画像入力 -> 投入 -> 自動完了", async () 
 
   await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
   await page.getByLabel("種別").selectOption("i2v");
-  await page.getByLabel("プロンプト").fill("make it move");
-  await page.getByLabel("元画像のパス").fill("/abs/in.png");
-  await page.getByRole("button", { name: "動画ジョブを投入" }).click();
+  await page
+    .getByLabel("作りたい動画の内容")
+    .fill("静止画を動かしてゆっくりズーム");
+  await page.getByRole("button", { name: "内容をまとめる" }).click();
 
-  await expect(page.getByText("完了しました")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("種別: i2v")).toBeVisible();
+  // ready で元画像欄が出る -> 入力 -> 送信
+  await page.getByLabel("元画像のパス").fill("/abs/in.png");
+  await page.getByRole("button", { name: "この内容で送信" }).click();
+
+  await expect(page.getByText("送信しました")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("種別: i2v")).toBeVisible({ timeout: 15_000 });
 
   await app.close();
 });

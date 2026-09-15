@@ -86,4 +86,15 @@ describe("a11y: 各タブ画面に重大な違反がない", () => {
     await screen.findByRole("heading", { name: "メディア" });
     await expectNoViolations(container);
   });
+
+  it("メディアタブ (動画コンポーザ)", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<AppShell />);
+    await user.click(screen.getByRole("tab", { name: "メディア" }));
+    await screen.findByRole("heading", { name: "メディア" });
+    // 動画種別に切替えると対話型コンポーザが表示される。
+    await user.selectOptions(screen.getByLabelText("種別"), "i2v");
+    await screen.findByLabelText("作りたい動画の内容");
+    await expectNoViolations(container);
+  });
 });

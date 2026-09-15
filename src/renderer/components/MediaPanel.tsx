@@ -9,15 +9,18 @@ import type {
   VideoKind,
 } from "@shared/inference/port";
 import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
+import type { PromptRefinementPort } from "@shared/media/promptRefinement";
+import { VideoPromptComposer } from "./VideoPromptComposer";
 
 /**
- * メディアタブ (画像ジョブの境界 + ジョブ監視)。
+ * メディアタブ (画像/動画ジョブの境界 + ジョブ監視)。
  *
- * 投入 (submitImageJob) -> 自動ポーリング (getJob) -> 状態 / 生成物表示。
- * succeeded / failed に達するか上限に達したら停止する。「状態を更新」での
- * 手動再取得も残す。実際の生成は当面 DummyInferenceAdapter (Fake)。
+ * 画像: プロンプト入力 -> submitImageJob -> 自動ポーリング。
+ * 動画: 自由指示ベースの対話型コンポーザ (VideoPromptComposer) で最終プロンプトを
+ *       確定 -> submitVideoJob -> 自動ポーリング。実際の生成は当面 Dummy (Fake)。
  *
  * sleep / pollInterval / maxPolls は注入可能 (テストは待たずに決定的)。
+ * refine は動画コンポーザの補完ポート (テスト差し替え用)。
  */
 type Phase = "idle" | "submitting" | "polling" | "refreshing" | "error";
 
@@ -52,6 +55,7 @@ function isSettled(job: Job | null): boolean {
   return job?.state === "succeeded" || job?.state === "failed";
 }
 
+/** 画像パスの短い状態サマリー (動画はコンポーザが自前で持つ)。 */
 function summarize(t: TFunction, phase: Phase, job: Job | null): string {
   if (phase === "submitting") return t("media.status.submitting");
   if (phase === "refreshing") return t("media.status.refreshing");
@@ -72,25 +76,26 @@ export interface MediaPanelProps {
   sleep?: (ms: number) => Promise<void>;
   pollInterval?: number;
   maxPolls?: number;
+  refine?: PromptRefinementPort;
 }
 
 export function MediaPanel({
   sleep = defaultSleep,
   pollInterval,
   maxPolls = DEFAULT_MAX_POLLS,
+  refine,
 }: MediaPanelProps = {}) {
   const { t } = useTranslation();
   const [prompt, setPrompt] = useState("");
   const [kind, setKind] = useState<MediaKind>("image");
-  const [sourceImage, setSourceImage] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [sourceInvalid, setSourceInvalid] = useState(false);
   const [history, setHistory] = useState<JobHistoryEntry[]>([]);
 
   const sourceRequired = SOURCE_REQUIRED_KINDS.has(kind);
+  const isVideo = kind !== "image";
 
   // ポーリング周期: prop 明示指定を最優先、未指定なら設定値、なければ既定。
   const [pollMs, setPollMs] = useState(pollInterval ?? DEFAULT_POLL_INTERVAL);
@@ -138,42 +143,29 @@ export function MediaPanel({
   const busy =
     phase === "submitting" || phase === "polling" || phase === "refreshing";
 
-  /** succeeded/failed か上限まで getJob を反復する。 */
-  async function poll(id: string) {
+  /** succeeded/failed か上限まで getJob を反復し、最終ジョブを返す。 */
+  async function poll(id: string): Promise<Job | null> {
+    let last: Job | null = null;
     for (let i = 0; i < maxPolls; i += 1) {
       const next = (await getAikaApi().getJob(id)) ?? null;
-      if (!mounted.current) return;
+      if (!mounted.current) return last;
       setJob(next);
-      if (isSettled(next)) return;
+      last = next;
+      if (isSettled(next)) return next;
       await sleep(pollMs);
-      if (!mounted.current) return;
+      if (!mounted.current) return last;
     }
+    return last;
   }
 
+  /** 画像ジョブ: プロンプト -> submitImageJob -> ポーリング。 */
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    setSourceInvalid(false);
-
-    // source 必須種別の検証 (投入前に阻止し、入力へ関連付ける)。
-    if (sourceRequired && sourceImage.trim() === "") {
-      setSourceInvalid(true);
-      setError(t("media.error.sourceRequired"));
-      return;
-    }
-
     setPhase("submitting");
     setJob(null);
     try {
-      const api = getAikaApi();
-      let id: string;
-      if (kind === "image") {
-        id = await api.submitImageJob({ prompt });
-      } else {
-        id = await api.submitVideoJob(
-          sourceRequired ? { kind, prompt, sourceImage } : { kind, prompt },
-        );
-      }
+      const id = await getAikaApi().submitImageJob({ prompt });
       if (!mounted.current) return;
       setJobId(id);
       setPhase("polling");
@@ -185,6 +177,31 @@ export function MediaPanel({
         setError(err instanceof Error ? err.message : String(err));
         setPhase("error");
       }
+    }
+  }
+
+  /**
+   * 動画ジョブ投入 (コンポーザからの送信ハンドラ)。
+   * 成功で解決、失敗 (投入失敗 or ジョブ失敗) で reject し、コンポーザ側で
+   * error 状態 / retry を扱えるようにする。
+   */
+  async function runVideoJob(req: { prompt: string; sourceImage?: string }) {
+    setPhase("submitting");
+    setJob(null);
+    const videoKind = kind as VideoKind;
+    const id = await getAikaApi().submitVideoJob(
+      sourceRequired && req.sourceImage !== undefined
+        ? { kind: videoKind, prompt: req.prompt, sourceImage: req.sourceImage }
+        : { kind: videoKind, prompt: req.prompt },
+    );
+    if (!mounted.current) return;
+    setJobId(id);
+    setPhase("polling");
+    const final = await poll(id);
+    if (mounted.current) setPhase("idle");
+    await refreshHistory();
+    if (final?.state === "failed") {
+      throw new Error(final.error ?? "failed");
     }
   }
 
@@ -211,59 +228,57 @@ export function MediaPanel({
       ? (result as VideoJobResult).kind
       : undefined;
 
-  const submitLabel =
-    kind === "image"
-      ? t("media.action.submitImage")
-      : t("media.action.submitVideo");
-
   return (
     <section>
       <h1>{t("media.title")}</h1>
 
-      {/* 短い状態サマリーのみ live region に置く。 */}
-      <p role="status" aria-live="polite" aria-atomic="true">
-        {summarize(t, phase, job)}
-      </p>
+      <label htmlFor="media-kind">{t("media.kind.label")}</label>
+      <select
+        id="media-kind"
+        value={kind}
+        onChange={(e) => setKind(e.target.value as MediaKind)}
+      >
+        {KIND_VALUES.map((k) => (
+          <option key={k} value={k}>
+            {t(`media.kind.option.${k}`)}
+          </option>
+        ))}
+      </select>
 
-      <form onSubmit={onSubmit}>
-        <label htmlFor="media-kind">{t("media.kind.label")}</label>
-        <select
-          id="media-kind"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as MediaKind)}
-        >
-          {KIND_VALUES.map((k) => (
-            <option key={k} value={k}>
-              {t(`media.kind.option.${k}`)}
-            </option>
-          ))}
-        </select>
-
-        <label htmlFor="media-prompt">{t("media.prompt.label")}</label>
-        <textarea
-          id="media-prompt"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+      {isVideo ? (
+        <VideoPromptComposer
+          sourceRequired={sourceRequired}
+          onSubmit={runVideoJob}
+          {...(refine ? { refine } : {})}
         />
+      ) : (
+        <>
+          {/* 短い状態サマリーのみ live region に置く。 */}
+          <p role="status" aria-live="polite" aria-atomic="true">
+            {summarize(t, phase, job)}
+          </p>
 
-        {sourceRequired && (
-          <>
-            <label htmlFor="media-source">{t("media.source.label")}</label>
-            <input
-              id="media-source"
-              type="text"
-              value={sourceImage}
-              onChange={(e) => setSourceImage(e.target.value)}
-              aria-invalid={sourceInvalid}
-              aria-describedby={sourceInvalid ? "media-error" : undefined}
+          <form onSubmit={onSubmit}>
+            <label htmlFor="media-prompt">{t("media.prompt.label")}</label>
+            <textarea
+              id="media-prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
             />
-          </>
-        )}
+            <button type="submit" disabled={busy}>
+              {phase === "submitting"
+                ? t("media.action.submitting")
+                : t("media.action.submitImage")}
+            </button>
+          </form>
 
-        <button type="submit" disabled={busy}>
-          {phase === "submitting" ? t("media.action.submitting") : submitLabel}
-        </button>
-      </form>
+          {error !== null && (
+            <p role="alert" id="media-error">
+              {error}
+            </p>
+          )}
+        </>
+      )}
 
       <button
         type="button"
@@ -272,12 +287,6 @@ export function MediaPanel({
       >
         {t("media.action.refresh")}
       </button>
-
-      {error !== null && (
-        <p role="alert" id="media-error">
-          {error}
-        </p>
-      )}
 
       {jobId !== null && <p>{t("media.jobId", { id: jobId })}</p>}
 

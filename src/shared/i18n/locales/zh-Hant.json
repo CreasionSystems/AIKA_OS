@@ -59,7 +59,45 @@
     "jobId": "工作 ID：{{id}}",
     "result": { "kind": "類型：{{kind}}" },
     "artifacts": { "label": "產物" },
-    "history": { "title": "工作記錄", "clear": "清除記錄" }
+    "history": { "title": "工作記錄", "clear": "清除記錄" },
+    "composer": {
+      "instruction": {
+        "label": "想製作的影片內容",
+        "placeholder": "例如：黃昏海邊散步的黃金獵犬，電影感，10 秒，慢動作"
+      },
+      "action": {
+        "compose": "整理內容",
+        "continue": "繼續",
+        "send": "以此傳送",
+        "retry": "重試",
+        "redo": "重新填寫",
+        "reset": "新建"
+      },
+      "followup": { "title": "請再補充一些" },
+      "chips": { "title": "建議" },
+      "summary": { "title": "摘要" },
+      "finalPrompt": { "label": "最終提示詞草稿（可編輯）" },
+      "status": {
+        "idle": "請輸入內容",
+        "validating": "正在確認輸入…",
+        "followup": "請補充一些細節",
+        "ready": "提示詞草稿已就緒",
+        "sending": "傳送中…",
+        "success": "已傳送",
+        "error": "發生錯誤"
+      },
+      "question": {
+        "subject": "主題是什麼？（主體·場景）",
+        "motion": "對動作或運鏡有何要求？",
+        "style": "氛圍或風格如何？"
+      },
+      "chip": {
+        "cinematic": "電影感",
+        "anime": "動漫風",
+        "slowMotion": "慢動作",
+        "aerial": "空拍"
+      }
+    }
   },
   "writing": {
     "title": "寫作",
