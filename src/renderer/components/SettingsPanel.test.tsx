@@ -52,6 +52,7 @@ describe("SettingsPanel", () => {
         theme: "dark",
         jobHistoryLimit: 30,
         mediaPollIntervalMs: 1000,
+        language: "system",
       }),
     });
     render(<SettingsPanel />);
@@ -104,6 +105,7 @@ describe("SettingsPanel", () => {
         theme: "dark",
         jobHistoryLimit: DEFAULT_SETTINGS.jobHistoryLimit,
         mediaPollIntervalMs: DEFAULT_SETTINGS.mediaPollIntervalMs,
+        language: DEFAULT_SETTINGS.language,
       }),
     );
     expect(await screen.findByText("保存しました")).toBeInTheDocument();

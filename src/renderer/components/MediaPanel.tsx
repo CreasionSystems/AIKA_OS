@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { getAikaApi } from "@preload/windowApi";
 import type { Job } from "@main/jobs/jobQueue";
 import type {
@@ -22,13 +24,14 @@ type Phase = "idle" | "submitting" | "polling" | "refreshing" | "error";
 /** 種別: 画像 + 動画 5 種。 */
 type MediaKind = "image" | VideoKind;
 
-const KIND_OPTIONS: { value: MediaKind; label: string }[] = [
-  { value: "image", label: "画像" },
-  { value: "t2v", label: "動画: Text to Video" },
-  { value: "i2v", label: "動画: Image to Video" },
-  { value: "continuation", label: "動画: 継続" },
-  { value: "edit", label: "動画: 編集" },
-  { value: "audio", label: "動画: 音声駆動" },
+/** ラベルは i18n。option キーは media.kind.option.<value>。 */
+const KIND_VALUES: MediaKind[] = [
+  "image",
+  "t2v",
+  "i2v",
+  "continuation",
+  "edit",
+  "audio",
 ];
 
 /** 元画像 (sourceImage) が必須の動画種別。 */
@@ -49,19 +52,19 @@ function isSettled(job: Job | null): boolean {
   return job?.state === "succeeded" || job?.state === "failed";
 }
 
-function summarize(phase: Phase, job: Job | null): string {
-  if (phase === "submitting") return "ジョブを投入中…";
-  if (phase === "refreshing") return "状態を更新中…";
-  if (job === null) return "未投入";
+function summarize(t: TFunction, phase: Phase, job: Job | null): string {
+  if (phase === "submitting") return t("media.status.submitting");
+  if (phase === "refreshing") return t("media.status.refreshing");
+  if (job === null) return t("media.status.idle");
   switch (job.state) {
     case "queued":
-      return "待機中";
+      return t("media.status.queued");
     case "running":
-      return "実行中";
+      return t("media.status.running");
     case "succeeded":
-      return "完了しました";
+      return t("media.status.succeeded");
     case "failed":
-      return "失敗しました";
+      return t("media.status.failed");
   }
 }
 
@@ -76,6 +79,7 @@ export function MediaPanel({
   pollInterval,
   maxPolls = DEFAULT_MAX_POLLS,
 }: MediaPanelProps = {}) {
+  const { t } = useTranslation();
   const [prompt, setPrompt] = useState("");
   const [kind, setKind] = useState<MediaKind>("image");
   const [sourceImage, setSourceImage] = useState("");
@@ -154,7 +158,7 @@ export function MediaPanel({
     // source 必須種別の検証 (投入前に阻止し、入力へ関連付ける)。
     if (sourceRequired && sourceImage.trim() === "") {
       setSourceInvalid(true);
-      setError("元画像のパスを入力してください。");
+      setError(t("media.error.sourceRequired"));
       return;
     }
 
@@ -207,32 +211,35 @@ export function MediaPanel({
       ? (result as VideoJobResult).kind
       : undefined;
 
-  const submitLabel = kind === "image" ? "画像ジョブを投入" : "動画ジョブを投入";
+  const submitLabel =
+    kind === "image"
+      ? t("media.action.submitImage")
+      : t("media.action.submitVideo");
 
   return (
     <section>
-      <h1>メディア</h1>
+      <h1>{t("media.title")}</h1>
 
       {/* 短い状態サマリーのみ live region に置く。 */}
       <p role="status" aria-live="polite" aria-atomic="true">
-        {summarize(phase, job)}
+        {summarize(t, phase, job)}
       </p>
 
       <form onSubmit={onSubmit}>
-        <label htmlFor="media-kind">種別</label>
+        <label htmlFor="media-kind">{t("media.kind.label")}</label>
         <select
           id="media-kind"
           value={kind}
           onChange={(e) => setKind(e.target.value as MediaKind)}
         >
-          {KIND_OPTIONS.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
+          {KIND_VALUES.map((k) => (
+            <option key={k} value={k}>
+              {t(`media.kind.option.${k}`)}
             </option>
           ))}
         </select>
 
-        <label htmlFor="media-prompt">プロンプト</label>
+        <label htmlFor="media-prompt">{t("media.prompt.label")}</label>
         <textarea
           id="media-prompt"
           value={prompt}
@@ -241,7 +248,7 @@ export function MediaPanel({
 
         {sourceRequired && (
           <>
-            <label htmlFor="media-source">元画像のパス</label>
+            <label htmlFor="media-source">{t("media.source.label")}</label>
             <input
               id="media-source"
               type="text"
@@ -254,7 +261,7 @@ export function MediaPanel({
         )}
 
         <button type="submit" disabled={busy}>
-          {phase === "submitting" ? "投入中…" : submitLabel}
+          {phase === "submitting" ? t("media.action.submitting") : submitLabel}
         </button>
       </form>
 
@@ -263,7 +270,7 @@ export function MediaPanel({
         onClick={onRefresh}
         disabled={jobId === null || busy}
       >
-        状態を更新
+        {t("media.action.refresh")}
       </button>
 
       {error !== null && (
@@ -272,12 +279,14 @@ export function MediaPanel({
         </p>
       )}
 
-      {jobId !== null && <p>ジョブID: {jobId}</p>}
+      {jobId !== null && <p>{t("media.jobId", { id: jobId })}</p>}
 
-      {resultKind !== undefined && <p>種別: {resultKind}</p>}
+      {resultKind !== undefined && (
+        <p>{t("media.result.kind", { kind: resultKind })}</p>
+      )}
 
       {artifacts && (
-        <ul aria-label="生成物">
+        <ul aria-label={t("media.artifacts.label")}>
           {artifacts.map((a, i) => (
             <li key={i}>{a}</li>
           ))}
@@ -286,11 +295,11 @@ export function MediaPanel({
 
       {history.length > 0 && (
         <div>
-          <h2>ジョブ履歴</h2>
+          <h2>{t("media.history.title")}</h2>
           <button type="button" onClick={onClearHistory}>
-            履歴をクリア
+            {t("media.history.clear")}
           </button>
-          <ul aria-label="ジョブ履歴">
+          <ul aria-label={t("media.history.title")}>
             {history.map((e, i) => (
               <li key={i}>
                 {e.jobId} — {e.state}

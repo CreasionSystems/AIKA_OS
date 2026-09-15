@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { WritingPanel } from "./WritingPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { UpdatePanel } from "./UpdatePanel";
@@ -8,15 +9,16 @@ import { MediaPanel } from "./MediaPanel";
 /**
  * 画面シェル。文章作成 / 設定 / 更新 / コーディング / メディア をタブで切り替える。
  * 目的は導線整理であり、見た目の作り込みは後続。
+ * ラベルは i18n。文言長が伸びても崩れないよう固定幅前提は避ける。
  */
 type TabKey = "writing" | "settings" | "update" | "coding" | "media";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "writing", label: "文章作成" },
-  { key: "settings", label: "設定" },
-  { key: "update", label: "更新" },
-  { key: "coding", label: "コーディング" },
-  { key: "media", label: "メディア" },
+const TABS: { key: TabKey; labelKey: string }[] = [
+  { key: "writing", labelKey: "nav.tab.writing" },
+  { key: "settings", labelKey: "nav.tab.settings" },
+  { key: "update", labelKey: "nav.tab.update" },
+  { key: "coding", labelKey: "nav.tab.coding" },
+  { key: "media", labelKey: "nav.tab.media" },
 ];
 
 function renderPanel(tab: TabKey) {
@@ -35,6 +37,7 @@ function renderPanel(tab: TabKey) {
 }
 
 export function AppShell() {
+  const { t } = useTranslation();
   const [active, setActive] = useState<TabKey>("writing");
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -71,25 +74,25 @@ export function AppShell() {
       <div
         className="app-nav"
         role="tablist"
-        aria-label="メインナビ"
+        aria-label={t("nav.label")}
         onKeyDown={onKeyDown}
       >
-        {TABS.map((t, i) => (
+        {TABS.map((tab, i) => (
           <button
-            key={t.key}
+            key={tab.key}
             ref={(el) => {
               tabRefs.current[i] = el;
             }}
             role="tab"
             type="button"
-            id={`tab-${t.key}`}
-            aria-controls={`panel-${t.key}`}
-            aria-selected={active === t.key}
-            tabIndex={active === t.key ? 0 : -1}
-            className={active === t.key ? "app-tab is-active" : "app-tab"}
-            onClick={() => setActive(t.key)}
+            id={`tab-${tab.key}`}
+            aria-controls={`panel-${tab.key}`}
+            aria-selected={active === tab.key}
+            tabIndex={active === tab.key ? 0 : -1}
+            className={active === tab.key ? "app-tab is-active" : "app-tab"}
+            onClick={() => setActive(tab.key)}
           >
-            {t.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>

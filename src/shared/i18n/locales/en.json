@@ -1,0 +1,64 @@
+{
+  "nav": {
+    "label": "Main navigation",
+    "tab": {
+      "writing": "Writing",
+      "settings": "Settings",
+      "update": "Updates",
+      "coding": "Coding",
+      "media": "Media"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": {
+      "label": "Theme",
+      "option": { "light": "Light", "dark": "Dark", "system": "System" }
+    },
+    "writingMode": { "label": "Default writing mode" },
+    "jobHistoryLimit": { "label": "Job history limit" },
+    "pollInterval": { "label": "Media refresh interval (ms)" },
+    "language": {
+      "label": "Language",
+      "option": { "system": "Follow system setting", "ja": "日本語", "en": "English" }
+    },
+    "action": { "save": "Save" },
+    "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved" }
+  },
+  "media": {
+    "title": "Media",
+    "kind": {
+      "label": "Type",
+      "option": {
+        "image": "Image",
+        "t2v": "Video: Text to Video",
+        "i2v": "Video: Image to Video",
+        "continuation": "Video: Continuation",
+        "edit": "Video: Edit",
+        "audio": "Video: Audio-driven"
+      }
+    },
+    "prompt": { "label": "Prompt" },
+    "source": { "label": "Source image path" },
+    "action": {
+      "submitImage": "Submit image job",
+      "submitVideo": "Submit video job",
+      "submitting": "Submitting…",
+      "refresh": "Refresh status"
+    },
+    "status": {
+      "idle": "Not submitted",
+      "submitting": "Submitting job…",
+      "refreshing": "Refreshing…",
+      "queued": "Queued",
+      "running": "Running",
+      "succeeded": "Completed",
+      "failed": "Failed"
+    },
+    "error": { "sourceRequired": "Please enter the source image path." },
+    "jobId": "Job ID: {{id}}",
+    "result": { "kind": "Type: {{kind}}" },
+    "artifacts": { "label": "Artifacts" },
+    "history": { "title": "Job history", "clear": "Clear history" }
+  }
+}
