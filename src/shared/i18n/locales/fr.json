@@ -50,5 +50,62 @@
     "result": { "kind": "Type : {{kind}}" },
     "artifacts": { "label": "Artefacts" },
     "history": { "title": "Historique des tâches", "clear": "Effacer l'historique" }
+  },
+  "writing": {
+    "title": "Rédaction",
+    "mode": {
+      "label": "Mode",
+      "option": {
+        "general": "Général",
+        "novel": "Roman",
+        "lyrics": "Paroles",
+        "business": "Document professionnel",
+        "legal": "Document juridique"
+      }
+    },
+    "prompt": { "label": "Invite" },
+    "action": { "generate": "Générer", "generating": "Génération…" },
+    "status": { "idle": "Non généré", "generating": "Génération…", "generated": "Généré" },
+    "result": { "label": "Résultat généré" }
+  },
+  "update": {
+    "title": "Mises à jour",
+    "action": { "check": "Rechercher des mises à jour" },
+    "status": {
+      "idle": "Non vérifié",
+      "checking": "Vérification…",
+      "upToDate": "À jour",
+      "available": "Une nouvelle version ({{version}}) est disponible",
+      "error": "Échec de la vérification : {{error}}"
+    }
+  },
+  "coding": {
+    "title": "Codage",
+    "goal": { "label": "Objectif" },
+    "action": {
+      "plan": "Créer un plan",
+      "planning": "Création…",
+      "execute": "Exécuter",
+      "executing": "Exécution…",
+      "verify": "Vérifier",
+      "verifying": "Vérification…",
+      "rewind": "Annuler une étape",
+      "rewinding": "Annulation…"
+    },
+    "status": {
+      "idle": "Non démarré",
+      "planning": "Création du plan…",
+      "executing": "Exécution…",
+      "verifying": "Vérification…",
+      "rewinding": "Annulation d'une étape…",
+      "planned_one": "Plan créé ({{count}} étape)",
+      "planned_other": "Plan créé ({{count}} étapes)",
+      "executed": "Exécution terminée",
+      "verified": "Vérification terminée",
+      "rewound": "Une étape annulée ({{phase}})"
+    },
+    "plan": { "label": "Plan" },
+    "executionLog": { "label": "Journal d'exécution" },
+    "verification": { "label": "Résultat de la vérification", "passed": "Réussi", "failed": "Échoué" }
   }
 }

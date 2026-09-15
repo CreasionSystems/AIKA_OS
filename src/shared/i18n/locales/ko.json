@@ -50,5 +50,61 @@
     "result": { "kind": "종류: {{kind}}" },
     "artifacts": { "label": "생성물" },
     "history": { "title": "작업 기록", "clear": "기록 지우기" }
+  },
+  "writing": {
+    "title": "글쓰기",
+    "mode": {
+      "label": "모드",
+      "option": {
+        "general": "일반",
+        "novel": "소설",
+        "lyrics": "가사",
+        "business": "업무 문서",
+        "legal": "법무 문서"
+      }
+    },
+    "prompt": { "label": "프롬프트" },
+    "action": { "generate": "생성", "generating": "생성 중…" },
+    "status": { "idle": "생성 안 됨", "generating": "생성 중…", "generated": "생성됨" },
+    "result": { "label": "생성 결과" }
+  },
+  "update": {
+    "title": "업데이트",
+    "action": { "check": "업데이트 확인" },
+    "status": {
+      "idle": "확인 안 됨",
+      "checking": "확인 중…",
+      "upToDate": "최신 상태입니다",
+      "available": "새 버전 ({{version}})이(가) 있습니다",
+      "error": "확인에 실패했습니다: {{error}}"
+    }
+  },
+  "coding": {
+    "title": "코딩",
+    "goal": { "label": "목표 (goal)" },
+    "action": {
+      "plan": "계획 생성",
+      "planning": "생성 중…",
+      "execute": "실행",
+      "executing": "실행 중…",
+      "verify": "검증",
+      "verifying": "검증 중…",
+      "rewind": "한 단계 되돌리기",
+      "rewinding": "되돌리는 중…"
+    },
+    "status": {
+      "idle": "시작 안 됨",
+      "planning": "계획 생성 중…",
+      "executing": "실행 중…",
+      "verifying": "검증 중…",
+      "rewinding": "한 단계 되돌리는 중…",
+      "planned_other": "계획을 만들었습니다 ({{count}}단계)",
+      "executed": "실행이 완료되었습니다",
+      "verified": "검증이 완료되었습니다",
+      "rewound": "한 단계 되돌렸습니다 ({{phase}})"
+    },
+    "plan": { "label": "계획" },
+    "executionLog": { "label": "실행 로그" },
+    "verification": { "label": "검증 결과", "passed": "통과", "failed": "실패" }
   }
 }

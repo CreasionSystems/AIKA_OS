@@ -86,3 +86,90 @@ test("i18n: 設定で言語切替 -> French + 未訳は en フォールバック
 
   await app.close();
 });
+
+/**
+ * 全主要画面 (Writing / Update / Coding) の言語切替と主要操作 + status を
+ * en と fr で確認する。fr は最も文言が伸びる言語での導線確認も兼ねる。
+ * 計画手順数は DummyInferenceAdapter 固定の 3 手順 (plural: other)。
+ */
+async function walkPanels(
+  lang: "en" | "fr",
+  labels: {
+    writingTab: string;
+    prompt: string;
+    generate: string;
+    generated: string;
+    updateTab: string;
+    check: string;
+    upToDate: string;
+    codingTab: string;
+    goal: string;
+    plan: string;
+    planned: string;
+  },
+) {
+  const app = await electron.launch({
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
+  });
+  const page = await app.firstWindow();
+
+  await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
+  await page.getByLabel("表示言語").selectOption(lang);
+
+  // Writing: 入力 -> 生成 -> status。
+  await page.getByRole("tab", { name: labels.writingTab }).click();
+  await page.getByLabel(labels.prompt).fill("hello");
+  await page.getByRole("button", { name: labels.generate }).click();
+  await expect(page.getByRole("status")).toContainText(labels.generated, {
+    timeout: 15_000,
+  });
+
+  // Update: 確認 -> status (最新)。
+  await page.getByRole("tab", { name: labels.updateTab }).click();
+  await page.getByRole("button", { name: labels.check }).click();
+  await expect(page.getByRole("status")).toContainText(labels.upToDate, {
+    timeout: 15_000,
+  });
+
+  // Coding: goal 入力 -> 計画作成 -> status (件数は plural)。
+  await page.getByRole("tab", { name: labels.codingTab }).click();
+  await page.getByLabel(labels.goal).fill("add feature");
+  await page.getByRole("button", { name: labels.plan }).click();
+  await expect(page.getByRole("status")).toContainText(labels.planned, {
+    timeout: 15_000,
+  });
+
+  await app.close();
+}
+
+test("i18n(en): Writing / Update / Coding の主要操作 + status", async () => {
+  await walkPanels("en", {
+    writingTab: "Writing",
+    prompt: "Prompt",
+    generate: "Generate",
+    generated: "Generated",
+    updateTab: "Updates",
+    check: "Check for updates",
+    upToDate: "Up to date",
+    codingTab: "Coding",
+    goal: "Goal",
+    plan: "Create plan",
+    planned: "Created a plan (3 steps)",
+  });
+});
+
+test("i18n(fr): Writing / Update / Coding の主要操作 + status (文言伸長)", async () => {
+  await walkPanels("fr", {
+    writingTab: "Rédaction",
+    prompt: "Invite",
+    generate: "Générer",
+    generated: "Généré",
+    updateTab: "Mises à jour",
+    check: "Rechercher des mises à jour",
+    upToDate: "À jour",
+    codingTab: "Codage",
+    goal: "Objectif",
+    plan: "Créer un plan",
+    planned: "Plan créé (3 étapes)",
+  });
+});

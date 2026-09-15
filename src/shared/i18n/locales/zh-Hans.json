@@ -50,5 +50,61 @@
     "result": { "kind": "类型：{{kind}}" },
     "artifacts": { "label": "生成物" },
     "history": { "title": "任务历史", "clear": "清除历史" }
+  },
+  "writing": {
+    "title": "写作",
+    "mode": {
+      "label": "模式",
+      "option": {
+        "general": "通用",
+        "novel": "小说",
+        "lyrics": "歌词",
+        "business": "商务文档",
+        "legal": "法律文书"
+      }
+    },
+    "prompt": { "label": "提示词" },
+    "action": { "generate": "生成", "generating": "生成中…" },
+    "status": { "idle": "未生成", "generating": "生成中…", "generated": "已生成" },
+    "result": { "label": "生成结果" }
+  },
+  "update": {
+    "title": "更新",
+    "action": { "check": "检查更新" },
+    "status": {
+      "idle": "未检查",
+      "checking": "检查中…",
+      "upToDate": "已是最新",
+      "available": "有新版本（{{version}}）",
+      "error": "检查失败：{{error}}"
+    }
+  },
+  "coding": {
+    "title": "编程",
+    "goal": { "label": "目标 (goal)" },
+    "action": {
+      "plan": "生成计划",
+      "planning": "生成中…",
+      "execute": "执行",
+      "executing": "执行中…",
+      "verify": "验证",
+      "verifying": "验证中…",
+      "rewind": "回退一步",
+      "rewinding": "回退中…"
+    },
+    "status": {
+      "idle": "未开始",
+      "planning": "正在生成计划…",
+      "executing": "执行中…",
+      "verifying": "验证中…",
+      "rewinding": "正在回退一步…",
+      "planned_other": "已生成计划（{{count}} 步）",
+      "executed": "执行已完成",
+      "verified": "验证已完成",
+      "rewound": "已回退一步（{{phase}}）"
+    },
+    "plan": { "label": "计划" },
+    "executionLog": { "label": "执行日志" },
+    "verification": { "label": "验证结果", "passed": "通过", "failed": "失败" }
   }
 }

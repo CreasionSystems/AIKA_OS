@@ -122,7 +122,7 @@ export function SettingsPanel() {
         >
           {MODE_OPTIONS.map((m) => (
             <option key={m.mode} value={m.mode}>
-              {m.label}
+              {t(`writing.mode.option.${m.mode}`)}
             </option>
           ))}
         </select>
