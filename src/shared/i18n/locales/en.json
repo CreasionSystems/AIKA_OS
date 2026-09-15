@@ -60,5 +60,62 @@
     "result": { "kind": "Type: {{kind}}" },
     "artifacts": { "label": "Artifacts" },
     "history": { "title": "Job history", "clear": "Clear history" }
+  },
+  "writing": {
+    "title": "Writing",
+    "mode": {
+      "label": "Mode",
+      "option": {
+        "general": "General",
+        "novel": "Novel",
+        "lyrics": "Lyrics",
+        "business": "Business document",
+        "legal": "Legal document"
+      }
+    },
+    "prompt": { "label": "Prompt" },
+    "action": { "generate": "Generate", "generating": "Generating…" },
+    "status": { "idle": "Not generated", "generating": "Generating…", "generated": "Generated" },
+    "result": { "label": "Generated result" }
+  },
+  "update": {
+    "title": "Updates",
+    "action": { "check": "Check for updates" },
+    "status": {
+      "idle": "Not checked",
+      "checking": "Checking…",
+      "upToDate": "Up to date",
+      "available": "A new version ({{version}}) is available",
+      "error": "Check failed: {{error}}"
+    }
+  },
+  "coding": {
+    "title": "Coding",
+    "goal": { "label": "Goal" },
+    "action": {
+      "plan": "Create plan",
+      "planning": "Creating…",
+      "execute": "Execute",
+      "executing": "Executing…",
+      "verify": "Verify",
+      "verifying": "Verifying…",
+      "rewind": "Undo one step",
+      "rewinding": "Undoing…"
+    },
+    "status": {
+      "idle": "Not started",
+      "planning": "Creating plan…",
+      "executing": "Executing…",
+      "verifying": "Verifying…",
+      "rewinding": "Undoing one step…",
+      "planned_one": "Created a plan ({{count}} step)",
+      "planned_other": "Created a plan ({{count}} steps)",
+      "executed": "Execution complete",
+      "verified": "Verification complete",
+      "rewound": "Undid one step ({{phase}})"
+    },
+    "plan": { "label": "Plan" },
+    "executionLog": { "label": "Execution log" },
+    "verification": { "label": "Verification result", "passed": "Passed", "failed": "Failed" }
   }
 }

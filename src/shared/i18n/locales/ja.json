@@ -60,5 +60,61 @@
     "result": { "kind": "種別: {{kind}}" },
     "artifacts": { "label": "生成物" },
     "history": { "title": "ジョブ履歴", "clear": "履歴をクリア" }
+  },
+  "writing": {
+    "title": "文章作成",
+    "mode": {
+      "label": "モード",
+      "option": {
+        "general": "一般",
+        "novel": "小説",
+        "lyrics": "歌詞",
+        "business": "仕事の書類",
+        "legal": "法務文章"
+      }
+    },
+    "prompt": { "label": "プロンプト" },
+    "action": { "generate": "生成", "generating": "生成中…" },
+    "status": { "idle": "未生成", "generating": "生成中…", "generated": "生成しました" },
+    "result": { "label": "生成結果" }
+  },
+  "update": {
+    "title": "更新",
+    "action": { "check": "更新を確認" },
+    "status": {
+      "idle": "未確認",
+      "checking": "確認中…",
+      "upToDate": "最新です",
+      "available": "新しいバージョン ({{version}}) があります",
+      "error": "確認に失敗しました: {{error}}"
+    }
+  },
+  "coding": {
+    "title": "コーディング",
+    "goal": { "label": "目標 (goal)" },
+    "action": {
+      "plan": "計画を作成",
+      "planning": "作成中…",
+      "execute": "実行",
+      "executing": "実行中…",
+      "verify": "検証",
+      "verifying": "検証中…",
+      "rewind": "1手戻す",
+      "rewinding": "戻し中…"
+    },
+    "status": {
+      "idle": "未着手",
+      "planning": "計画を作成中…",
+      "executing": "実行中…",
+      "verifying": "検証中…",
+      "rewinding": "1手戻し中…",
+      "planned_other": "計画を作成しました（{{count}}手順）",
+      "executed": "実行が完了しました",
+      "verified": "検証が完了しました",
+      "rewound": "1手戻しました（{{phase}}）"
+    },
+    "plan": { "label": "計画" },
+    "executionLog": { "label": "実行ログ" },
+    "verification": { "label": "検証結果", "passed": "passed", "failed": "failed" }
   }
 }

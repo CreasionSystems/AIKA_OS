@@ -50,5 +50,61 @@
     "result": { "kind": "類型：{{kind}}" },
     "artifacts": { "label": "產物" },
     "history": { "title": "工作記錄", "clear": "清除記錄" }
+  },
+  "writing": {
+    "title": "寫作",
+    "mode": {
+      "label": "模式",
+      "option": {
+        "general": "通用",
+        "novel": "小說",
+        "lyrics": "歌詞",
+        "business": "商務文件",
+        "legal": "法律文件"
+      }
+    },
+    "prompt": { "label": "提示詞" },
+    "action": { "generate": "生成", "generating": "生成中…" },
+    "status": { "idle": "未生成", "generating": "生成中…", "generated": "已生成" },
+    "result": { "label": "生成結果" }
+  },
+  "update": {
+    "title": "更新",
+    "action": { "check": "檢查更新" },
+    "status": {
+      "idle": "未檢查",
+      "checking": "檢查中…",
+      "upToDate": "已是最新",
+      "available": "有新版本（{{version}}）",
+      "error": "檢查失敗：{{error}}"
+    }
+  },
+  "coding": {
+    "title": "程式設計",
+    "goal": { "label": "目標 (goal)" },
+    "action": {
+      "plan": "產生計畫",
+      "planning": "產生中…",
+      "execute": "執行",
+      "executing": "執行中…",
+      "verify": "驗證",
+      "verifying": "驗證中…",
+      "rewind": "回退一步",
+      "rewinding": "回退中…"
+    },
+    "status": {
+      "idle": "未開始",
+      "planning": "正在產生計畫…",
+      "executing": "執行中…",
+      "verifying": "驗證中…",
+      "rewinding": "正在回退一步…",
+      "planned_other": "已產生計畫（{{count}} 步）",
+      "executed": "執行已完成",
+      "verified": "驗證已完成",
+      "rewound": "已回退一步（{{phase}}）"
+    },
+    "plan": { "label": "計畫" },
+    "executionLog": { "label": "執行日誌" },
+    "verification": { "label": "驗證結果", "passed": "通過", "failed": "失敗" }
   }
 }

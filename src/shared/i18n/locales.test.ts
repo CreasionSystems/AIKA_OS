@@ -79,16 +79,57 @@ const REQUIRED_KEYS = [
   "media.error.sourceRequired",
   "media.history.title",
   "media.history.clear",
+  "writing.title",
+  "writing.mode.label",
+  "writing.mode.option.general",
+  "writing.mode.option.novel",
+  "writing.mode.option.lyrics",
+  "writing.mode.option.business",
+  "writing.mode.option.legal",
+  "writing.prompt.label",
+  "writing.action.generate",
+  "writing.status.idle",
+  "writing.status.generated",
+  "writing.result.label",
+  "update.title",
+  "update.action.check",
+  "update.status.idle",
+  "update.status.checking",
+  "update.status.upToDate",
+  "update.status.available",
+  "update.status.error",
+  "coding.title",
+  "coding.goal.label",
+  "coding.action.plan",
+  "coding.action.execute",
+  "coding.action.verify",
+  "coding.action.rewind",
+  "coding.status.idle",
+  "coding.status.planned_other",
+  "coding.status.executed",
+  "coding.status.verified",
+  "coding.status.rewound",
+  "coding.plan.label",
+  "coding.executionLog.label",
+  "coding.verification.label",
+  "coding.verification.passed",
+  "coding.verification.failed",
 ];
 
 const LANGUAGE_OPTION_KEYS = SUPPORTED_UI_LOCALES.map(
   (l) => `settings.language.option.${l}`,
 ).concat("settings.language.option.system");
 
+/** i18next の plural サフィックスを除いた論理キーへ正規化する。 */
+function stripPlural(key: string): string {
+  return key.replace(/_(zero|one|two|few|many|other)$/, "");
+}
+
 describe("ロケール資源の完全性", () => {
-  it("ja と en は全キーを持つ基準ロケール", () => {
-    const jaKeys = flatten(ja).sort();
-    const enKeys = flatten(en).sort();
+  it("ja と en は同じ論理キー集合を持つ基準ロケール", () => {
+    // plural サフィックス (_one/_other 等) は言語ごとに異なるため正規化して比較。
+    const jaKeys = [...new Set(flatten(ja).map(stripPlural))].sort();
+    const enKeys = [...new Set(flatten(en).map(stripPlural))].sort();
     expect(enKeys).toEqual(jaKeys);
   });
 

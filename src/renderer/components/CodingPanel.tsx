@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { getAikaApi } from "@preload/windowApi";
 import type { CodingView } from "@main/coding/codingWorkflow";
 
 /**
- * コーディング支援画面 (plan 縦切り)。
+ * コーディング支援画面 (plan 縦切り)。ラベルは i18n。
  * 目標 (goal) 入力 -> 計画作成 (planCode) -> 計画表示。
  * Execute / Verify / Rewind は後続の縦切りで追加する。
  */
@@ -20,38 +22,43 @@ type LastAction = "plan" | "execute" | "verify" | "rewind" | null;
 
 /** live region 用の短い状態サマリー (本文・ログ全文は含めない)。 */
 function summarize(
+  t: TFunction,
   phase: Phase,
   state: CodingView | null,
   lastAction: LastAction,
 ): string {
   switch (phase) {
     case "planning":
-      return "計画を作成中…";
+      return t("coding.status.planning");
     case "executing":
-      return "実行中…";
+      return t("coding.status.executing");
     case "verifying":
-      return "検証中…";
+      return t("coding.status.verifying");
     case "rewinding":
-      return "1手戻し中…";
+      return t("coding.status.rewinding");
     default:
       break;
   }
-  if (state === null) return "未着手";
+  if (state === null) return t("coding.status.idle");
   switch (lastAction) {
     case "plan":
-      return `計画を作成しました（${state.plan?.steps.length ?? 0}手順）`;
+      // 件数は plural 機構で扱う (文字列連結しない)。
+      return t("coding.status.planned", {
+        count: state.plan?.steps.length ?? 0,
+      });
     case "execute":
-      return "実行が完了しました";
+      return t("coding.status.executed");
     case "verify":
-      return "検証が完了しました";
+      return t("coding.status.verified");
     case "rewind":
-      return `1手戻しました（${state.phase}）`;
+      return t("coding.status.rewound", { phase: state.phase });
     default:
-      return "未着手";
+      return t("coding.status.idle");
   }
 }
 
 export function CodingPanel() {
+  const { t } = useTranslation();
   const [goal, setGoal] = useState("");
   const [state, setState] = useState<CodingView | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -126,33 +133,37 @@ export function CodingPanel() {
 
   return (
     <section>
-      <h1>コーディング</h1>
+      <h1>{t("coding.title")}</h1>
 
       {/* 短い状態サマリーのみ live region に置く (本文・ログ全文は含めない)。 */}
       <p role="status" aria-live="polite" aria-atomic="true">
-        {summarize(phase, state, lastAction)}
+        {summarize(t, phase, state, lastAction)}
       </p>
 
       <form onSubmit={onSubmit}>
-        <label htmlFor="coding-goal">目標 (goal)</label>
+        <label htmlFor="coding-goal">{t("coding.goal.label")}</label>
         <textarea
           id="coding-goal"
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
         />
         <button type="submit" disabled={busy}>
-          {phase === "planning" ? "作成中…" : "計画を作成"}
+          {phase === "planning"
+            ? t("coding.action.planning")
+            : t("coding.action.plan")}
         </button>
       </form>
 
       <button type="button" onClick={onRewind} disabled={!canRewind}>
-        {phase === "rewinding" ? "戻し中…" : "1手戻す"}
+        {phase === "rewinding"
+          ? t("coding.action.rewinding")
+          : t("coding.action.rewind")}
       </button>
 
       {error !== null && <p role="alert">{error}</p>}
 
       {state?.plan && (
-        <div aria-label="計画">
+        <div aria-label={t("coding.plan.label")}>
           <p>{state.plan.summary}</p>
           <ol>
             {state.plan.steps.map((s, i) => (
@@ -165,11 +176,13 @@ export function CodingPanel() {
       )}
 
       <button type="button" onClick={onExecute} disabled={!canExecute}>
-        {phase === "executing" ? "実行中…" : "実行"}
+        {phase === "executing"
+          ? t("coding.action.executing")
+          : t("coding.action.execute")}
       </button>
 
       {state?.executionLog && (
-        <div aria-label="実行ログ">
+        <div aria-label={t("coding.executionLog.label")}>
           <ul>
             {state.executionLog.map((line, i) => (
               <li key={i}>{line}</li>
@@ -179,12 +192,18 @@ export function CodingPanel() {
       )}
 
       <button type="button" onClick={onVerify} disabled={!canVerify}>
-        {phase === "verifying" ? "検証中…" : "検証"}
+        {phase === "verifying"
+          ? t("coding.action.verifying")
+          : t("coding.action.verify")}
       </button>
 
       {state?.verification && (
-        <div aria-label="検証結果">
-          <p>{state.verification.passed ? "passed" : "failed"}</p>
+        <div aria-label={t("coding.verification.label")}>
+          <p>
+            {state.verification.passed
+              ? t("coding.verification.passed")
+              : t("coding.verification.failed")}
+          </p>
           <ul>
             {state.verification.notes.map((note, i) => (
               <li key={i}>{note}</li>
