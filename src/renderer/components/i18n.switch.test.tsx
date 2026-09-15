@@ -102,4 +102,43 @@ describe("AppShell ナビ 言語切替", () => {
       screen.getByRole("tablist", { name: "Main navigation" }),
     ).toBeInTheDocument();
   });
+
+  it("ko 選択時はタブラベルが韓国語になる", async () => {
+    await i18n.changeLanguage("ko");
+    render(<AppShell />);
+    expect(screen.getByRole("tab", { name: "미디어" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "설정" })).toBeInTheDocument();
+  });
+
+  it("fr 選択時はタブラベルがフランス語になる", async () => {
+    await i18n.changeLanguage("fr");
+    render(<AppShell />);
+    expect(screen.getByRole("tab", { name: "Média" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Paramètres" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("追加言語の en フォールバック", () => {
+  it("ko: 未訳の動画種別ラベルは en が使われる", async () => {
+    await i18n.changeLanguage("ko");
+    render(<MediaPanel />);
+    // media.kind.label は韓国語、option 値は en フォールバック。
+    expect(screen.getByLabelText("종류")).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Video: Text to Video" }),
+    ).toBeInTheDocument();
+  });
+
+  it("fr: 未訳の動画種別ラベルは en が使われる", async () => {
+    await i18n.changeLanguage("fr");
+    render(<MediaPanel />);
+    expect(
+      screen.getByRole("button", { name: "Lancer la tâche d'image" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Video: Image to Video" }),
+    ).toBeInTheDocument();
+  });
 });

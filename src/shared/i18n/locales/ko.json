@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "label": "메인 내비게이션",
+    "tab": {
+      "writing": "글쓰기",
+      "settings": "설정",
+      "update": "업데이트",
+      "coding": "코딩",
+      "media": "미디어"
+    }
+  },
+  "settings": {
+    "title": "설정",
+    "theme": {
+      "label": "테마",
+      "option": { "light": "라이트", "dark": "다크", "system": "시스템" }
+    },
+    "writingMode": { "label": "기본 글쓰기 모드" },
+    "jobHistoryLimit": { "label": "작업 기록 상한" },
+    "pollInterval": { "label": "미디어 새로고침 간격 (ms)" },
+    "language": {
+      "label": "표시 언어",
+      "option": { "system": "시스템 설정 따르기", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
+    },
+    "action": { "save": "저장" },
+    "status": { "unsaved": "저장 안 됨", "saving": "저장 중…", "saved": "저장됨" }
+  },
+  "media": {
+    "title": "미디어",
+    "kind": { "label": "종류" },
+    "prompt": { "label": "프롬프트" },
+    "source": { "label": "원본 이미지 경로" },
+    "action": {
+      "submitImage": "이미지 작업 제출",
+      "submitVideo": "동영상 작업 제출",
+      "submitting": "제출 중…",
+      "refresh": "상태 새로고침"
+    },
+    "status": {
+      "idle": "제출 안 됨",
+      "submitting": "작업 제출 중…",
+      "refreshing": "새로고침 중…",
+      "queued": "대기 중",
+      "running": "실행 중",
+      "succeeded": "완료됨",
+      "failed": "실패함"
+    },
+    "error": { "sourceRequired": "원본 이미지 경로를 입력하세요." },
+    "jobId": "작업 ID: {{id}}",
+    "result": { "kind": "종류: {{kind}}" },
+    "artifacts": { "label": "생성물" },
+    "history": { "title": "작업 기록", "clear": "기록 지우기" }
+  }
+}

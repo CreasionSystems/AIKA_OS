@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "label": "主导航",
+    "tab": {
+      "writing": "写作",
+      "settings": "设置",
+      "update": "更新",
+      "coding": "编程",
+      "media": "媒体"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "theme": {
+      "label": "主题",
+      "option": { "light": "浅色", "dark": "深色", "system": "跟随系统" }
+    },
+    "writingMode": { "label": "默认写作模式" },
+    "jobHistoryLimit": { "label": "任务历史上限" },
+    "pollInterval": { "label": "媒体刷新间隔（毫秒）" },
+    "language": {
+      "label": "显示语言",
+      "option": { "system": "跟随系统设置", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
+    },
+    "action": { "save": "保存" },
+    "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "已保存" }
+  },
+  "media": {
+    "title": "媒体",
+    "kind": { "label": "类型" },
+    "prompt": { "label": "提示词" },
+    "source": { "label": "源图像路径" },
+    "action": {
+      "submitImage": "提交图像任务",
+      "submitVideo": "提交视频任务",
+      "submitting": "提交中…",
+      "refresh": "刷新状态"
+    },
+    "status": {
+      "idle": "未提交",
+      "submitting": "正在提交任务…",
+      "refreshing": "正在刷新…",
+      "queued": "排队中",
+      "running": "运行中",
+      "succeeded": "已完成",
+      "failed": "已失败"
+    },
+    "error": { "sourceRequired": "请输入源图像路径。" },
+    "jobId": "任务 ID：{{id}}",
+    "result": { "kind": "类型：{{kind}}" },
+    "artifacts": { "label": "生成物" },
+    "history": { "title": "任务历史", "clear": "清除历史" }
+  }
+}

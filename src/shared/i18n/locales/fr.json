@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "label": "Navigation principale",
+    "tab": {
+      "writing": "Rédaction",
+      "settings": "Paramètres",
+      "update": "Mises à jour",
+      "coding": "Codage",
+      "media": "Média"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "theme": {
+      "label": "Thème",
+      "option": { "light": "Clair", "dark": "Sombre", "system": "Système" }
+    },
+    "writingMode": { "label": "Mode de rédaction par défaut" },
+    "jobHistoryLimit": { "label": "Limite de l'historique des tâches" },
+    "pollInterval": { "label": "Intervalle d'actualisation du média (ms)" },
+    "language": {
+      "label": "Langue d'affichage",
+      "option": { "system": "Suivre le réglage du système", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
+    },
+    "action": { "save": "Enregistrer" },
+    "status": { "unsaved": "Non enregistré", "saving": "Enregistrement…", "saved": "Enregistré" }
+  },
+  "media": {
+    "title": "Média",
+    "kind": { "label": "Type" },
+    "prompt": { "label": "Invite" },
+    "source": { "label": "Chemin de l'image source" },
+    "action": {
+      "submitImage": "Lancer la tâche d'image",
+      "submitVideo": "Lancer la tâche vidéo",
+      "submitting": "Envoi…",
+      "refresh": "Actualiser l'état"
+    },
+    "status": {
+      "idle": "Non envoyé",
+      "submitting": "Envoi de la tâche…",
+      "refreshing": "Actualisation…",
+      "queued": "En file d'attente",
+      "running": "En cours",
+      "succeeded": "Terminé",
+      "failed": "Échec"
+    },
+    "error": { "sourceRequired": "Veuillez saisir le chemin de l'image source." },
+    "jobId": "ID de tâche : {{id}}",
+    "result": { "kind": "Type : {{kind}}" },
+    "artifacts": { "label": "Artefacts" },
+    "history": { "title": "Historique des tâches", "clear": "Effacer l'historique" }
+  }
+}
