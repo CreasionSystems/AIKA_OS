@@ -75,6 +75,9 @@
         "copy": "コピー"
       },
       "error": { "copyFailed": "コピーできませんでした", "copyLabel": "コピーのエラー" },
+      "params": { "title": "詳細設定", "durationSec": "長さ（秒）", "fps": "fps", "resolution": "解像度", "qualityPreset": "品質", "motionStrength": "モーション強度", "unset": "未設定" },
+      "quality": { "draft": "下書き", "standard": "標準", "high": "高品質" },
+      "asset": { "video": "元動画のパス", "audio": "音声ファイルのパス" },
       "log": { "label": "会話ログ" },
       "turn": { "user": "ユーザー", "assistant": "アシスタント", "followUp": "補足を確認しています", "draft": "プロンプト案を提示しました" },
       "hint": { "enterToSend": "Enter で送信 / Shift+Enter で改行" },

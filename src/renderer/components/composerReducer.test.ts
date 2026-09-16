@@ -97,7 +97,7 @@ describe("会話ログ (turns)", () => {
       at: 2,
       result: READY,
     });
-    expect(s.draftPrompt).toBe(READY.draftPrompt);
+    expect(s.draft.prompt).toBe(READY.draftPrompt);
     expect(s.summary).toBe("要約");
     expect(derivePhase(s)).toBe("ready");
     expect(s.turns[1]).toMatchObject({ role: "assistant", kind: "draft" });
@@ -115,7 +115,7 @@ describe("会話ログ (turns)", () => {
       text: "書き換えた本文",
     });
     expect(edited.turns).toEqual(ready.turns);
-    expect(edited.draftPrompt).toBe("書き換えた本文");
+    expect(edited.draft.prompt).toBe("書き換えた本文");
   });
 
   it("本文を全消ししても ready を維持する (提示済みかで判定する)", () => {
@@ -178,7 +178,7 @@ describe("stale response の破棄", () => {
       result: READY,
     });
     expect(stale).toBe(second);
-    expect(stale.draftPrompt).toBe("");
+    expect(stale.draft.prompt).toBe("");
     expect(derivePhase(stale)).toBe("validating");
   });
 
@@ -256,7 +256,7 @@ describe("エラーと復帰", () => {
     expect(failed.errorMessage).toBe("backend down");
     expect(failed.instruction).toBe(ready.instruction);
     expect(failed.answers).toEqual(ready.answers);
-    expect(failed.draftPrompt).toBe(ready.draftPrompt);
+    expect(failed.draft.prompt).toBe(ready.draft.prompt);
   });
 
   it("source 未入力の拒否は ready のままで alert だけ出す", () => {
@@ -298,8 +298,113 @@ describe("エラーと復帰", () => {
     );
     expect(s.turns).toHaveLength(0);
     expect(s.instruction).toBe("");
-    expect(s.draftPrompt).toBe("");
+    expect(s.draft.prompt).toBe("");
     expect(derivePhase(s)).toBe("idle");
+  });
+});
+
+describe("params と assets (PR-C)", () => {
+  it("param-changed は該当フィールドのみ更新し turns / operation に触れない", () => {
+    const ready = composerReducer(refining(), {
+      type: "refinement-succeeded",
+      requestId: "r1",
+      at: 2,
+      result: READY,
+    });
+    const s = composerReducer(ready, {
+      type: "param-changed",
+      key: "fps",
+      value: 24,
+    });
+    expect(s.draft.params.fps).toBe(24);
+    expect(s.draft.params.durationSec).toBe(ready.draft.params.durationSec);
+    expect(s.draft.prompt).toBe(ready.draft.prompt);
+    expect(s.turns).toEqual(ready.turns);
+    expect(s.operation).toEqual(ready.operation);
+  });
+
+  it("param-changed に undefined を渡すと未入力に戻す", () => {
+    const s = composerReducer(initialComposerState, {
+      type: "param-changed",
+      key: "durationSec",
+      value: undefined,
+    });
+    expect("durationSec" in s.draft.params).toBe(false);
+  });
+
+  it("asset-changed は種別ごとに1件を保持し、空文字で取り下げる", () => {
+    const withImage = composerReducer(initialComposerState, {
+      type: "asset-changed",
+      kind: "image",
+      path: "/abs/a.png",
+    });
+    expect(withImage.draft.assets).toEqual([
+      { kind: "image", path: "/abs/a.png" },
+    ]);
+
+    const replaced = composerReducer(withImage, {
+      type: "asset-changed",
+      kind: "image",
+      path: "/abs/b.png",
+    });
+    expect(replaced.draft.assets).toEqual([
+      { kind: "image", path: "/abs/b.png" },
+    ]);
+
+    const withAudio = composerReducer(replaced, {
+      type: "asset-changed",
+      kind: "audio",
+      path: "/abs/a.wav",
+    });
+    expect(withAudio.draft.assets).toHaveLength(2);
+
+    const removed = composerReducer(withAudio, {
+      type: "asset-changed",
+      kind: "image",
+      path: "",
+    });
+    expect(removed.draft.assets).toEqual([
+      { kind: "audio", path: "/abs/a.wav" },
+    ]);
+  });
+
+  it("送信失敗後も params と assets を保持する", () => {
+    const ready = run([
+      { type: "param-changed", key: "fps", value: 16 },
+      { type: "asset-changed", kind: "image", path: "/abs/in.png" },
+    ], composerReducer(refining(), {
+      type: "refinement-succeeded",
+      requestId: "r1",
+      at: 2,
+      result: READY,
+    }));
+    const failed = run([
+      { type: "send-requested", requestId: "s1" },
+      { type: "send-failed", requestId: "s1", message: "backend down" },
+    ], ready);
+    expect(failed.draft.params.fps).toBe(16);
+    expect(failed.draft.assets).toEqual(ready.draft.assets);
+  });
+
+  it("reset は params / assets を初期化し、redo は保持する", () => {
+    const ready = run([
+      { type: "param-changed", key: "fps", value: 16 },
+      { type: "asset-changed", kind: "image", path: "/abs/in.png" },
+    ], composerReducer(refining(), {
+      type: "refinement-succeeded",
+      requestId: "r1",
+      at: 2,
+      result: READY,
+    }));
+
+    const redone = composerReducer(ready, { type: "redo-requested" });
+    expect(redone.draft.params.fps).toBe(16);
+    expect(redone.draft.assets).toHaveLength(1);
+
+    const reseted = composerReducer(ready, { type: "reset-requested" });
+    expect(reseted.draft.assets).toEqual([]);
+    expect(reseted.draft.params.fps).toBeUndefined();
+    expect(reseted.draft.params.durationSec).toBe(5);
   });
 });
 
@@ -316,7 +421,7 @@ describe("redo と reset の切り分け", () => {
     const s = composerReducer(failedAfterReady(), { type: "redo-requested" });
     expect(derivePhase(s)).toBe("ready");
     expect(s.draftProduced).toBe(true);
-    expect(s.draftPrompt).toBe(READY.draftPrompt);
+    expect(s.draft.prompt).toBe(READY.draftPrompt);
     expect(s.summary).toBe("要約");
     expect(s.instruction).toBe("夕暮れの海辺を歩く犬");
     expect(s.turns).toEqual(failedAfterReady().turns);
@@ -338,9 +443,9 @@ describe("redo と reset の切り分け", () => {
     expect(s.turns).toHaveLength(0);
     expect(s.instruction).toBe("");
     expect(s.answers).toEqual({});
-    expect(s.draftPrompt).toBe("");
+    expect(s.draft.prompt).toBe("");
     expect(s.summary).toBe("");
-    expect(s.sourceImage).toBe("");
+    expect(s.draft.assets).toEqual([]);
     expect(s.errorMessage).toBeNull();
     expect(s.operation).toEqual({ status: "idle" });
     expect(derivePhase(s)).toBe("idle");
@@ -355,9 +460,10 @@ describe("errorMessage の解除", () => {
     ], refining());
   }
 
-  it("原因の入力を直すと解除される (source-changed)", () => {
+  it("原因の入力を直すと解除される (asset-changed)", () => {
     const s = composerReducer(rejectedLocally(), {
-      type: "source-changed",
+      type: "asset-changed",
+      kind: "image",
       path: "/abs/in.png",
     });
     expect(s.errorMessage).toBeNull();

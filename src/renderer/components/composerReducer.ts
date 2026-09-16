@@ -14,6 +14,12 @@
  */
 
 import type { RefineResult } from "@shared/media/promptRefinement";
+import type {
+  LocalMediaAsset,
+  VideoDraft,
+  VideoGenerationParams,
+} from "@shared/media/videoRequest";
+import { DEFAULT_DURATION_SEC, DEFAULT_MOTION_STRENGTH } from "@shared/media/videoRequest";
 
 /** 非同期処理の世代 id。 */
 export type RequestId = string;
@@ -50,7 +56,12 @@ export interface ComposerState {
     questionIds: readonly string[];
     chipIds: readonly string[];
   } | null;
-  draftPrompt: string;
+  /**
+   * 送信される内容 (prompt / params / assets)。answers と summary は
+   * refinement の副産物で NormalizedVideoJobRequest に含まれないため、
+   * draft には入れず ComposerState 直下に置く (ADR-001 D1)。
+   */
+  draft: VideoDraft;
   /**
    * 補完がドラフトを提示済みか。ready の導出根拠を「本文が非空か」にすると、
    * ユーザーが最終案を全消しして打ち直す間だけ ready 画面が消えてしまうため、
@@ -58,7 +69,6 @@ export interface ComposerState {
    */
   draftProduced: boolean;
   summary: string;
-  sourceImage: string;
   sourceInvalid: boolean;
   /** alert に出す本文。ローカル検証の拒否でも使うため operation とは分ける。 */
   errorMessage: string | null;
@@ -83,10 +93,17 @@ export const initialComposerState: ComposerState = {
   instruction: "",
   answers: {},
   followUpIds: null,
-  draftPrompt: "",
+  draft: {
+    prompt: "",
+    // 値域はモデルごとに異なるため、既定値だけを置き上限は持たない。
+    params: {
+      durationSec: DEFAULT_DURATION_SEC,
+      motionStrength: DEFAULT_MOTION_STRENGTH,
+    },
+    assets: [],
+  },
   draftProduced: false,
   summary: "",
-  sourceImage: "",
   sourceInvalid: false,
   errorMessage: null,
   operation: { status: "idle" },
@@ -117,7 +134,12 @@ export type ComposerAction =
   | { type: "instruction-changed"; text: string }
   | { type: "answer-changed"; id: string; text: string }
   | { type: "draft-changed"; text: string }
-  | { type: "source-changed"; path: string }
+  | {
+      type: "param-changed";
+      key: keyof VideoGenerationParams;
+      value: VideoGenerationParams[keyof VideoGenerationParams] | undefined;
+    }
+  | { type: "asset-changed"; kind: LocalMediaAsset["kind"]; path: string }
   | { type: "chip-appended"; text: string }
   | { type: "instruction-submitted"; requestId: RequestId; at: number }
   | { type: "follow-up-answered"; requestId: RequestId; at: number; text: string }
@@ -173,16 +195,34 @@ export function composerReducer(
       };
 
     case "draft-changed":
-      return { ...state, draftPrompt: action.text };
+      return { ...state, draft: { ...state.draft, prompt: action.text } };
 
-    case "source-changed":
-      // 該当入力を直したら、ローカル拒否のエラー表示は解除する。
+    case "param-changed": {
+      const params = { ...state.draft.params };
+      if (action.value === undefined) {
+        delete params[action.key];
+      } else {
+        // key と value は呼び出し側で対応付けているため、ここでは代入のみ行う。
+        (params as Record<string, unknown>)[action.key] = action.value;
+      }
+      return { ...state, draft: { ...state.draft, params } };
+    }
+
+    case "asset-changed": {
+      // 種別ごとに1件を保持する。空文字は取り下げとして扱う。
+      const rest = state.draft.assets.filter((a) => a.kind !== action.kind);
+      const assets =
+        action.path.trim() === ""
+          ? rest
+          : [...rest, { kind: action.kind, path: action.path }];
       return {
         ...state,
-        sourceImage: action.path,
+        draft: { ...state.draft, assets },
         sourceInvalid: false,
+        // 該当入力を直したら、ローカル拒否のエラー表示は解除する。
         errorMessage: state.sourceInvalid ? null : state.errorMessage,
       };
+    }
 
     case "chip-appended":
       return {
@@ -246,7 +286,7 @@ export function composerReducer(
       return withTurn(
         {
           ...state,
-          draftPrompt: action.result.draftPrompt,
+          draft: { ...state.draft, prompt: action.result.draftPrompt },
           draftProduced: true,
           summary: action.result.summary,
           operation: { status: "idle" },

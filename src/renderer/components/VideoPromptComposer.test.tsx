@@ -25,7 +25,7 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
     render(
-      <VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />,
+      <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />,
     );
 
     await user.type(
@@ -43,7 +43,7 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
     render(
-      <VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />,
+      <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />,
     );
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
@@ -66,7 +66,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
   it("曖昧な指示では補足質問と候補チップを出す", async () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), "犬");
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
@@ -83,7 +83,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
   it("補足質問に答えて続けると ready へ進む", async () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), "犬");
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
@@ -104,7 +104,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
   it("候補チップを押すと指示に追記される", async () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), "犬");
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
@@ -121,7 +121,7 @@ describe("VideoPromptComposer (source 必須検証)", () => {
   it("source 必須で未入力なら送信を阻止し alert を出す", async () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="i2v" sourceRequired onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
@@ -140,7 +140,7 @@ describe("VideoPromptComposer (source 必須検証)", () => {
   it("source を入力すれば onSubmit に含めて送信する", async () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="i2v" sourceRequired onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
@@ -166,7 +166,7 @@ describe("VideoPromptComposer (error / retry)", () => {
       .mockRejectedValueOnce(new Error("backend down"))
       .mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
@@ -188,7 +188,7 @@ describe("VideoPromptComposer (error / retry)", () => {
 describe("VideoPromptComposer (a11y / 状態機械)", () => {
   it("status は role=status / polite / atomic で初期は idle 文言", () => {
     render(
-      <VideoPromptComposer sourceRequired={false} onSubmit={vi.fn(async () => {})} />,
+      <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={vi.fn(async () => {})} />,
     );
     const status = screen.getByRole("status", { name: "送信状態" });
     expect(status).toHaveAttribute("aria-live", "polite");
@@ -199,7 +199,7 @@ describe("VideoPromptComposer (a11y / 状態機械)", () => {
   it("成功後にやり直すと idle へ戻る", async () => {
     const onSubmit = vi.fn(async () => {});
     const user = userEvent.setup();
-    render(<VideoPromptComposer sourceRequired={false} onSubmit={onSubmit} />);
+    render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
     await user.click(screen.getByRole("button", { name: "内容をまとめる" }));

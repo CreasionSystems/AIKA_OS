@@ -17,6 +17,14 @@ import {
   initialComposerState,
   type RequestId,
 } from "./composerReducer";
+import type { VideoKind } from "@shared/inference/port";
+import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
+import { DEFAULT_ASSET_REQUIREMENTS } from "@shared/media/videoCapability";
+import type {
+  LocalMediaAsset,
+  QualityPreset,
+  Resolution,
+} from "@shared/media/videoRequest";
 
 /**
  * 動画プロンプトの対話型コンポーザ。
@@ -39,8 +47,15 @@ import {
  * compositionstart-end の ref / keyCode===229 の3層でガードする。
  */
 export interface VideoPromptComposerProps {
+  /** 動画種別。必要な資産入力の出し分けに使う。 */
+  kind: VideoKind;
   /** source 画像パスが必須の種別か。 */
   sourceRequired: boolean;
+  /**
+   * テンプレート / モデルの能力記述。PR-C では受け取るだけで値域の厳密検証は
+   * 行わない (concrete descriptor は後続 PR)。渡せる形だけ先に用意する。
+   */
+  capability?: VideoCapabilityDescriptor;
   /** 最終プロンプトの送信。成功で解決、失敗で reject。 */
   onSubmit: (req: { prompt: string; sourceImage?: string }) => Promise<void>;
   /** 補完ポート (テスト差し替え用)。既定は決定的 Dummy。 */
@@ -50,6 +65,8 @@ export interface VideoPromptComposerProps {
 }
 
 const ERROR_ID = "composer-error";
+const RESOLUTIONS: readonly Resolution[] = ["480p", "720p", "1080p"];
+const QUALITY_PRESETS: readonly QualityPreset[] = ["draft", "standard", "high"];
 const HINT_ID = "composer-keyboard-hint";
 
 /** IME 変換中の keydown か。isComposing だけでは環境差があるため 229 も見る。 */
@@ -62,6 +79,7 @@ function isImeKeyDown(
 }
 
 export function VideoPromptComposer({
+  kind,
   sourceRequired,
   onSubmit,
   refine = createDummyPromptRefinement(),
@@ -74,13 +92,17 @@ export function VideoPromptComposer({
     instruction,
     answers,
     followUpIds: followUp,
-    draftPrompt: draft,
     summary,
-    sourceImage,
     sourceInvalid,
     errorMessage: error,
     copyState,
   } = state;
+  const draft = state.draft.prompt;
+  const params = state.draft.params;
+  /** 種別ごとの資産パス (1件ずつ保持)。 */
+  const assetPath = (k: LocalMediaAsset["kind"]) =>
+    state.draft.assets.find((a) => a.kind === k)?.path ?? "";
+  const sourceImage = assetPath("image");
   const phase = derivePhase(state);
 
   /** コピー結果の表示を自動的に消すまでの時間 (ms)。 */
@@ -144,6 +166,24 @@ export function VideoPromptComposer({
     } catch {
       dispatch({ type: "copy-failed" });
     }
+  }
+
+  /** 種別に必要な資産入力 (required は baseline の最小数から判断する)。 */
+  const assetKinds = DEFAULT_ASSET_REQUIREMENTS[kind].map((r) => ({
+    kind: r.kind,
+    required: r.min > 0,
+  }));
+
+  /** 数値欄は空を未入力として扱い、丸めや補正は行わない。 */
+  function setNumberParam(
+    key: "durationSec" | "fps" | "motionStrength",
+    raw: string,
+  ) {
+    dispatch({
+      type: "param-changed",
+      key,
+      value: raw === "" ? undefined : Number(raw),
+    });
   }
 
   /** 複数行入力を内容に応じて自動拡張する。 */
@@ -404,21 +444,132 @@ export function VideoPromptComposer({
           />
           <p id={HINT_ID}>{t("media.composer.hint.enterToSend")}</p>
 
-          {sourceRequired && (
-            <>
-              <label htmlFor="composer-source">{t("media.source.label")}</label>
-              <input
-                id="composer-source"
-                type="text"
-                value={sourceImage}
-                onChange={(e) =>
-                  dispatch({ type: "source-changed", path: e.target.value })
-                }
-                aria-invalid={sourceInvalid}
-                aria-describedby={sourceInvalid ? ERROR_ID : undefined}
-              />
-            </>
-          )}
+          {/* 構造化パラメータ。値域はモデル依存のため、ここでは軽い UI guard のみ。 */}
+          <fieldset>
+            <legend>{t("media.composer.params.title")}</legend>
+
+            <label htmlFor="composer-duration">
+              {t("media.composer.params.durationSec")}
+            </label>
+            <input
+              id="composer-duration"
+              type="number"
+              min={0}
+              step="any"
+              value={params.durationSec ?? ""}
+              onChange={(e) => setNumberParam("durationSec", e.target.value)}
+            />
+
+            <label htmlFor="composer-fps">{t("media.composer.params.fps")}</label>
+            <input
+              id="composer-fps"
+              type="number"
+              min={1}
+              step={1}
+              value={params.fps ?? ""}
+              onChange={(e) => setNumberParam("fps", e.target.value)}
+            />
+
+            <label htmlFor="composer-resolution">
+              {t("media.composer.params.resolution")}
+            </label>
+            <select
+              id="composer-resolution"
+              value={params.resolution ?? ""}
+              onChange={(e) =>
+                dispatch({
+                  type: "param-changed",
+                  key: "resolution",
+                  value:
+                    e.target.value === ""
+                      ? undefined
+                      : (e.target.value as Resolution),
+                })
+              }
+            >
+              <option value="">{t("media.composer.params.unset")}</option>
+              {RESOLUTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="composer-quality">
+              {t("media.composer.params.qualityPreset")}
+            </label>
+            <select
+              id="composer-quality"
+              value={params.qualityPreset ?? ""}
+              onChange={(e) =>
+                dispatch({
+                  type: "param-changed",
+                  key: "qualityPreset",
+                  value:
+                    e.target.value === ""
+                      ? undefined
+                      : (e.target.value as QualityPreset),
+                })
+              }
+            >
+              <option value="">{t("media.composer.params.unset")}</option>
+              {QUALITY_PRESETS.map((q) => (
+                <option key={q} value={q}>
+                  {t(`media.composer.quality.${q}`)}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="composer-motion">
+              {t("media.composer.params.motionStrength")}
+            </label>
+            <input
+              id="composer-motion"
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.motionStrength ?? 0}
+              onChange={(e) => setNumberParam("motionStrength", e.target.value)}
+              aria-describedby="composer-motion-value"
+            />
+            {/* スライダーの現在値はテキストでも読めるようにする。 */}
+            <span id="composer-motion-value">
+              {(params.motionStrength ?? 0).toFixed(2)}
+            </span>
+          </fieldset>
+
+          {/* 資産入力は種別ごとに出し分ける。image は既存ラベルを維持する。 */}
+          {assetKinds.map(({ kind: assetKind, required }) => {
+            const isImage = assetKind === "image";
+            const invalid = isImage && sourceInvalid;
+            return (
+              <div key={assetKind}>
+                <label htmlFor={`composer-asset-${assetKind}`}>
+                  {isImage
+                    ? t("media.source.label")
+                    : t(`media.composer.asset.${assetKind}`)}
+                </label>
+                <input
+                  id={`composer-asset-${assetKind}`}
+                  type="text"
+                  value={assetPath(assetKind)}
+                  // required 属性はブラウザ既定の制約検証で submit を止め、
+                  // 独自の alert 表示を奪うため使わない (a11y 規約を優先)。
+                  aria-required={required}
+                  onChange={(e) =>
+                    dispatch({
+                      type: "asset-changed",
+                      kind: assetKind,
+                      path: e.target.value,
+                    })
+                  }
+                  aria-invalid={invalid}
+                  aria-describedby={invalid ? ERROR_ID : undefined}
+                />
+              </div>
+            );
+          })}
 
           <button
             type="button"
