@@ -75,6 +75,8 @@
         "copy": "Copier"
       },
       "error": { "copyFailed": "Copie impossible", "copyLabel": "Erreur de copie" },
+      "log": { "label": "Journal de conversation" },
+      "turn": { "user": "Vous", "assistant": "Assistant", "followUp": "Vérification de quelques détails", "draft": "Brouillon de prompt proposé" },
       "hint": { "enterToSend": "Entrée pour envoyer / Maj+Entrée pour un saut de ligne" },
       "followup": { "title": "Donnez-moi un peu plus de détails" },
       "chips": { "title": "Suggestions" },

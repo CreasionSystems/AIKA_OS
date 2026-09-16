@@ -75,6 +75,8 @@
         "copy": "Copy"
       },
       "error": { "copyFailed": "Could not copy", "copyLabel": "Copy error" },
+      "log": { "label": "Conversation log" },
+      "turn": { "user": "You", "assistant": "Assistant", "followUp": "Checking a few details", "draft": "Proposed a prompt draft" },
       "hint": { "enterToSend": "Enter to send / Shift+Enter for a new line" },
       "followup": { "title": "Tell me a bit more" },
       "chips": { "title": "Suggestions" },

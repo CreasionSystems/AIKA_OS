@@ -75,6 +75,8 @@
         "copy": "复制"
       },
       "error": { "copyFailed": "无法复制", "copyLabel": "复制错误" },
+      "log": { "label": "对话记录" },
+      "turn": { "user": "用户", "assistant": "助手", "followUp": "正在确认补充信息", "draft": "已提出提示词草案" },
       "hint": { "enterToSend": "Enter 发送 / Shift+Enter 换行" },
       "followup": { "title": "请再补充一些" },
       "chips": { "title": "建议" },

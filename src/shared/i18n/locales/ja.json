@@ -75,6 +75,8 @@
         "copy": "コピー"
       },
       "error": { "copyFailed": "コピーできませんでした", "copyLabel": "コピーのエラー" },
+      "log": { "label": "会話ログ" },
+      "turn": { "user": "ユーザー", "assistant": "アシスタント", "followUp": "補足を確認しています", "draft": "プロンプト案を提示しました" },
       "hint": { "enterToSend": "Enter で送信 / Shift+Enter で改行" },
       "followup": { "title": "もう少し教えてください" },
       "chips": { "title": "候補" },
