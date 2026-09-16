@@ -7,11 +7,14 @@ import type {
   InferencePort,
   SubmitVideoJobResult,
   TextGenerationResult,
-  VideoJobRequest,
   VideoJobResult,
 } from "@shared/inference/port";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import { normalizeVideoJobRequest } from "@shared/media/videoValidation";
+import type { VideoCapabilityProvider } from "@main/workflow/videoCapabilities";
+import { createDummyCapabilityProvider } from "@main/workflow/videoCapabilities";
+import type { WorkflowRouter } from "@main/workflow/workflowRouter";
+import { createDummyWorkflowRouter } from "@main/workflow/workflowRouter";
 import {
   WritingValidationError,
   normalizeWritingRequest,
@@ -31,16 +34,6 @@ export interface InferenceIpcService {
   getJob(id: string): Job | undefined;
 }
 
-/** 正規化済み要求を、現行アダプタが受け取れる最小形へ写す。 */
-function toPortRequest(req: NormalizedVideoJobRequest): VideoJobRequest {
-  const image = req.assets.find((a) => a.kind === "image");
-  return {
-    kind: req.kind,
-    prompt: req.prompt,
-    ...(image !== undefined ? { sourceImage: image.path } : {}),
-  };
-}
-
 /**
  * InferenceService — InferencePort と JobQueue を結線する中核サービス。
  *
@@ -55,6 +48,10 @@ export class InferenceService implements InferenceIpcService {
   constructor(
     private readonly port: InferencePort,
     private readonly queue: JobQueue,
+    /** UI・検証向けの能力記述。main 側の再検証にも使う。 */
+    private readonly capabilities: VideoCapabilityProvider = createDummyCapabilityProvider(),
+    /** 実行向けのテンプレート注入。責務が異なるため別インターフェース。 */
+    private readonly router: WorkflowRouter = createDummyWorkflowRouter(),
   ) {}
 
   /** 画像生成ジョブを投入し、キューの jobId を返す。 */
@@ -69,17 +66,35 @@ export class InferenceService implements InferenceIpcService {
    * (ADR-001 D6)。検証に失敗した場合はキューに積まず、明細を返す。
    */
   submitVideoJob(req: NormalizedVideoJobRequest): SubmitVideoJobResult {
-    const result = normalizeVideoJobRequest(req.kind, {
-      prompt: req.prompt,
-      params: req.params,
-      assets: req.assets,
-    });
+    // descriptor 付きで再検証する。renderer が許容外の値を送っても、
+    // backend 境界で拒否できるようにする (ADR-001 D6)。
+    const capability = this.capabilities.capabilityFor(req.kind);
+    const result = normalizeVideoJobRequest(
+      req.kind,
+      { prompt: req.prompt, params: req.params, assets: req.assets },
+      capability ?? undefined,
+    );
     if (!result.valid) {
       return { status: "invalid", issues: result.issues };
     }
-    // 生成バックエンドへは最小形で渡す (実アダプタ接続は後続 PR)。
+
+    // 検証済みの要求だけをテンプレートへ注入する。Router は値を変えない。
+    const routed = this.router.route(result.request);
+    if (routed === null) {
+      return {
+        status: "invalid",
+        issues: [
+          {
+            code: "unsupported-kind",
+            kind: req.kind,
+            messageKey: "media.validation.unsupportedKind",
+          },
+        ],
+      };
+    }
+
     const jobId = this.queue.enqueue<VideoJobResult>(() =>
-      this.port.runVideoJob(toPortRequest(result.request)),
+      this.port.runVideoJob({ kind: result.request.kind, ...routed }),
     );
     return { status: "accepted", jobId };
   }

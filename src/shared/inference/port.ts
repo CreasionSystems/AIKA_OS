@@ -73,12 +73,24 @@ export type SubmitVideoJobResult =
   | { status: "accepted"; jobId: string }
   | { status: "invalid"; issues: readonly ValidationIssue[] };
 
-/** 生成バックエンドへ渡す最小形。正規化済み要求から main が組み立てる。 */
-export interface VideoJobRequest {
-  kind: VideoKind;
-  prompt?: string;
-  sourceImage?: string;
+/**
+ * Workflow Router の出力。テンプレート識別子と注入済みの入力。
+ *
+ * inputs のキーはテンプレートごとに異なるため、共有契約では固定しない
+ * (ADR-001 D3b と同じ思想)。正準キーは Router 実装とそのテストで固定する。
+ */
+export interface RoutedWorkflow {
+  templateId: string;
+  inputs: Readonly<Record<string, unknown>>;
 }
+
+/**
+ * アダプタの実行契約。Router の出力に kind を添えたもの。
+ *
+ * 旧 VideoJobRequest (prompt と sourceImage だけ) を置き換える。旧契約では
+ * params と image 以外の assets が落ちていた。
+ */
+export type RoutedVideoJob = { kind: VideoKind } & RoutedWorkflow;
 
 /** ジョブ結果の共通形。実体のないFakeでもUIが扱えるように構造を固定する。 */
 export interface MediaJobResult {
@@ -108,5 +120,5 @@ export interface InferencePort {
   generateText(req: TextGenerationRequest): Promise<TextGenerationResult>;
   generateCodePlan(req: CodePlanRequest): Promise<CodePlanResult>;
   runImageJob(req: ImageJobRequest): Promise<ImageJobResult>;
-  runVideoJob(req: VideoJobRequest): Promise<VideoJobResult>;
+  runVideoJob(req: RoutedVideoJob): Promise<VideoJobResult>;
 }
