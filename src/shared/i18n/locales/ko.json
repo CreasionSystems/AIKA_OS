@@ -71,8 +71,10 @@
         "send": "이 내용으로 보내기",
         "retry": "다시 시도",
         "redo": "다시 쓰기",
-        "reset": "새로 만들기"
+        "reset": "새로 만들기",
+        "copy": "복사"
       },
+      "error": { "copyFailed": "복사하지 못했습니다", "copyLabel": "복사 오류" },
       "hint": { "enterToSend": "Enter로 전송 / Shift+Enter로 줄바꿈" },
       "followup": { "title": "조금 더 알려 주세요" },
       "chips": { "title": "추천" },
@@ -85,7 +87,10 @@
         "ready": "프롬프트 초안이 준비되었습니다",
         "sending": "보내는 중…",
         "success": "보냈습니다",
-        "error": "오류가 발생했습니다"
+        "error": "오류가 발생했습니다",
+        "copied": "복사했습니다",
+        "label": "전송 상태",
+        "copyLabel": "복사 결과"
       },
       "question": {
         "subject": "주제는 무엇인가요? (대상·장면)",

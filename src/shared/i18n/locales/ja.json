@@ -71,8 +71,10 @@
         "send": "この内容で送信",
         "retry": "再試行",
         "redo": "書き直す",
-        "reset": "新しく作成"
+        "reset": "新しく作成",
+        "copy": "コピー"
       },
+      "error": { "copyFailed": "コピーできませんでした", "copyLabel": "コピーのエラー" },
       "hint": { "enterToSend": "Enter で送信 / Shift+Enter で改行" },
       "followup": { "title": "もう少し教えてください" },
       "chips": { "title": "候補" },
@@ -85,7 +87,10 @@
         "ready": "プロンプト案ができました",
         "sending": "送信中…",
         "success": "送信しました",
-        "error": "エラーが発生しました"
+        "error": "エラーが発生しました",
+        "copied": "コピーしました",
+        "label": "送信状態",
+        "copyLabel": "コピー結果"
       },
       "question": {
         "subject": "主題は何ですか？（被写体・場面）",

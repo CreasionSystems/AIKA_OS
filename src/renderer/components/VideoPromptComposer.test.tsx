@@ -36,7 +36,7 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
 
     const draft = await screen.findByLabelText("最終プロンプト案（編集できます）");
     expect(draft).toHaveValue(SUFFICIENT);
-    expect(screen.getByRole("status")).toHaveTextContent("プロンプト案ができました");
+    expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("プロンプト案ができました");
   });
 
   it("最終案を編集して送信すると onSubmit に編集後プロンプトを渡す", async () => {
@@ -57,7 +57,7 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
       expect(onSubmit).toHaveBeenCalledWith({ prompt: `${SUFFICIENT} 10秒` }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("送信しました"),
+      expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("送信しました"),
     );
   });
 });
@@ -77,7 +77,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
     expect(
       screen.getByRole("button", { name: "シネマティック" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("補足を入力してください");
+    expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("補足を入力してください");
   });
 
   it("補足質問に答えて続けると ready へ進む", async () => {
@@ -134,7 +134,7 @@ describe("VideoPromptComposer (source 必須検証)", () => {
     const src = screen.getByLabelText("元画像のパス");
     expect(src).toHaveAttribute("aria-invalid", "true");
     expect(alert).toHaveAttribute("id", src.getAttribute("aria-describedby") as string);
-    expect(screen.getByRole("status")).not.toHaveTextContent("元画像");
+    expect(screen.getByRole("status", { name: "送信状態" })).not.toHaveTextContent("元画像");
   });
 
   it("source を入力すれば onSubmit に含めて送信する", async () => {
@@ -175,11 +175,11 @@ describe("VideoPromptComposer (error / retry)", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/backend down/);
     // status にエラー本文は混ぜない
-    expect(screen.getByRole("status")).not.toHaveTextContent("backend down");
+    expect(screen.getByRole("status", { name: "送信状態" })).not.toHaveTextContent("backend down");
 
     await user.click(screen.getByRole("button", { name: "再試行" }));
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("送信しました"),
+      expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("送信しました"),
     );
     expect(onSubmit).toHaveBeenCalledTimes(2);
   });
@@ -190,7 +190,7 @@ describe("VideoPromptComposer (a11y / 状態機械)", () => {
     render(
       <VideoPromptComposer sourceRequired={false} onSubmit={vi.fn(async () => {})} />,
     );
-    const status = screen.getByRole("status");
+    const status = screen.getByRole("status", { name: "送信状態" });
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(status).toHaveAttribute("aria-atomic", "true");
     expect(status).toHaveTextContent("内容を入力してください");
@@ -206,11 +206,11 @@ describe("VideoPromptComposer (a11y / 状態機械)", () => {
     await screen.findByLabelText("最終プロンプト案（編集できます）");
     await user.click(screen.getByRole("button", { name: "この内容で送信" }));
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("送信しました"),
+      expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("送信しました"),
     );
 
     await user.click(screen.getByRole("button", { name: "新しく作成" }));
     expect(screen.getByLabelText("作りたい動画の内容")).toHaveValue("");
-    expect(screen.getByRole("status")).toHaveTextContent("内容を入力してください");
+    expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("内容を入力してください");
   });
 });

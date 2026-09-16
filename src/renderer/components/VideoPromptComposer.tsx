@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState,
   type FormEvent,
@@ -52,6 +53,9 @@ export interface VideoPromptComposerProps {
 const ERROR_ID = "composer-error";
 const HINT_ID = "composer-keyboard-hint";
 
+/** コピーの結果表示。phase (送信の状態機械) とは独立に扱う。 */
+type CopyState = "idle" | "copied" | "failed";
+
 /** IME 変換中の keydown か。isComposing だけでは環境差があるため 229 も見る。 */
 function isImeKeyDown(
   event: ReactKeyboardEvent<HTMLElement>,
@@ -79,6 +83,10 @@ export function VideoPromptComposer({
   const [sourceImage, setSourceImage] = useState("");
   const [sourceInvalid, setSourceInvalid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+
+  /** コピー結果の表示を自動的に消すまでの時間 (ms)。 */
+  const COPY_FEEDBACK_MS = 2000;
 
   const instructionRef = useRef<HTMLTextAreaElement | null>(null);
   const composeFormRef = useRef<HTMLFormElement | null>(null);
@@ -109,6 +117,24 @@ export function VideoPromptComposer({
       composingRef.current = false;
     },
   };
+
+  /** コピー結果の表示は一定時間で消す。送信の状態機械には影響しない。 */
+  useEffect(() => {
+    if (copyState === "idle") return;
+    const timer = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_MS);
+    return () => clearTimeout(timer);
+  }, [copyState, COPY_FEEDBACK_MS]);
+
+  /** 最終案 (編集後) をクリップボードへ写す。失敗は握りつぶさない。 */
+  async function copyDraft() {
+    if (draft.trim() === "") return;
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+  }
 
   /** 複数行入力を内容に応じて自動拡張する。 */
   function autoGrow(el: HTMLTextAreaElement | null) {
@@ -231,8 +257,24 @@ export function VideoPromptComposer({
   return (
     <div>
       {/* 短い状態サマリーのみ live region に置く。 */}
-      <p role="status" aria-live="polite" aria-atomic="true">
+      {/* 送信状態。live region は初回レンダリングから置く。 */}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t("media.composer.status.label")}
+      >
         {statusText()}
+      </p>
+
+      {/* コピー結果。送信状態とは混ぜず、名前で識別できるようにする。 */}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t("media.composer.status.copyLabel")}
+      >
+        {copyState === "copied" ? t("media.composer.status.copied") : ""}
       </p>
 
       {showComposeForm && (
@@ -338,6 +380,13 @@ export function VideoPromptComposer({
             </>
           )}
 
+          <button
+            type="button"
+            onClick={() => void copyDraft()}
+            disabled={composing || draft.trim() === ""}
+          >
+            {t("media.composer.action.copy")}
+          </button>
           <button type="submit" disabled={composing || draft.trim() === ""}>
             {t("media.composer.action.send")}
           </button>
@@ -367,6 +416,13 @@ export function VideoPromptComposer({
       {error !== null && (
         <p role="alert" id={ERROR_ID}>
           {error}
+        </p>
+      )}
+
+      {/* コピー失敗は握りつぶさず、失敗としてだけ alert に出す。 */}
+      {copyState === "failed" && (
+        <p role="alert" aria-label={t("media.composer.error.copyLabel")}>
+          {t("media.composer.error.copyFailed")}
         </p>
       )}
     </div>

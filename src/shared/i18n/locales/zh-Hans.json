@@ -71,8 +71,10 @@
         "send": "以此发送",
         "retry": "重试",
         "redo": "重新填写",
-        "reset": "新建"
+        "reset": "新建",
+        "copy": "复制"
       },
+      "error": { "copyFailed": "无法复制", "copyLabel": "复制错误" },
       "hint": { "enterToSend": "Enter 发送 / Shift+Enter 换行" },
       "followup": { "title": "请再补充一些" },
       "chips": { "title": "建议" },
@@ -85,7 +87,10 @@
         "ready": "提示词草稿已就绪",
         "sending": "发送中…",
         "success": "已发送",
-        "error": "发生错误"
+        "error": "发生错误",
+        "copied": "已复制",
+        "label": "发送状态",
+        "copyLabel": "复制结果"
       },
       "question": {
         "subject": "主题是什么？（主体·场景）",

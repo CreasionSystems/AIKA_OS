@@ -71,8 +71,10 @@
         "send": "Send with this",
         "retry": "Retry",
         "redo": "Rewrite",
-        "reset": "Start new"
+        "reset": "Start new",
+        "copy": "Copy"
       },
+      "error": { "copyFailed": "Could not copy", "copyLabel": "Copy error" },
       "hint": { "enterToSend": "Enter to send / Shift+Enter for a new line" },
       "followup": { "title": "Tell me a bit more" },
       "chips": { "title": "Suggestions" },
@@ -85,7 +87,10 @@
         "ready": "Your prompt draft is ready",
         "sending": "Sending…",
         "success": "Sent",
-        "error": "An error occurred"
+        "error": "An error occurred",
+        "copied": "Copied",
+        "label": "Submission status",
+        "copyLabel": "Copy result"
       },
       "question": {
         "subject": "What is the subject? (who or what, and the scene)",

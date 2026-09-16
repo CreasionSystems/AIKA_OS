@@ -170,7 +170,7 @@ describe("Step 41-1: 指示入力の Enter 送信 / Shift+Enter 改行", () => {
     await user.type(instructionArea(), SUFFICIENT);
     await user.keyboard("{Enter}");
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("内容を確認中"),
+      expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("内容を確認中"),
     );
 
     await user.keyboard("{Enter}");
