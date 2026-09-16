@@ -13,7 +13,10 @@
  *   operation.refining の派生表示で代替する。
  */
 
-import type { RefineResult } from "@shared/media/promptRefinement";
+import type {
+  RefineResult,
+  SuggestedParam,
+} from "@shared/media/promptRefinement";
 import type {
   LocalMediaAsset,
   VideoDraft,
@@ -33,7 +36,7 @@ export interface ConversationTurn {
   text?: string;
   /** アシスタント / システム発話は i18n キーで持つ (6ロケール網羅を保つため)。 */
   messageKey?: string;
-  values?: Readonly<Record<string, string>>;
+  values?: Readonly<Record<string, string | number>>;
   createdAt: number;
 }
 
@@ -69,6 +72,11 @@ export interface ComposerState {
    */
   draftProduced: boolean;
   summary: string;
+  /**
+   * refinement が返した構造化パラメータの候補 (ADR-001 D1)。
+   * draft.params とは別に保持し、ユーザーが適用したときだけ draft へ入る。
+   */
+  suggestions: readonly SuggestedParam[];
   sourceInvalid: boolean;
   /** alert に出す本文。ローカル検証の拒否でも使うため operation とは分ける。 */
   errorMessage: string | null;
@@ -104,6 +112,7 @@ export const initialComposerState: ComposerState = {
   },
   draftProduced: false,
   summary: "",
+  suggestions: [],
   sourceInvalid: false,
   errorMessage: null,
   operation: { status: "idle" },
@@ -154,6 +163,8 @@ export type ComposerAction =
   | { type: "send-rejected-locally"; message: string }
   | { type: "send-succeeded"; requestId: RequestId }
   | { type: "send-failed"; requestId: RequestId; message: string }
+  | { type: "suggestion-applied"; key: SuggestedParam["key"] }
+  | { type: "suggestions-dismissed" }
   | { type: "redo-requested" }
   | { type: "reset-requested" }
   | { type: "copy-succeeded" }
@@ -265,6 +276,11 @@ export function composerReducer(
 
     case "refinement-succeeded": {
       if (!isCurrent(state.operation, "refining", action.requestId)) return state;
+      // 候補は draft.params へ自動反映しない。適用はユーザーの明示操作のみ。
+      const suggestions =
+        action.result.status === "follow-up"
+          ? (action.result.suggestions ?? [])
+          : (action.result.suggestedParams ?? []);
       if (action.result.status === "follow-up") {
         return withTurn(
           {
@@ -273,6 +289,7 @@ export function composerReducer(
               questionIds: action.result.questionIds,
               chipIds: action.result.chipIds,
             },
+            suggestions,
             operation: { status: "idle" },
           },
           {
@@ -289,12 +306,20 @@ export function composerReducer(
           draft: { ...state.draft, prompt: action.result.draftPrompt },
           draftProduced: true,
           summary: action.result.summary,
+          suggestions,
           operation: { status: "idle" },
         },
         {
           role: "assistant",
           kind: "draft",
-          messageKey: "media.composer.turn.draft",
+          // 候補の詳細は会話本文に出さず、件数だけを事実として伝える。
+          messageKey:
+            suggestions.length > 0
+              ? "media.composer.turn.draftWithSuggestions"
+              : "media.composer.turn.draft",
+          ...(suggestions.length > 0
+            ? { values: { count: suggestions.length } }
+            : {}),
           createdAt: action.at,
         },
       );
@@ -342,6 +367,23 @@ export function composerReducer(
           message: action.message,
         },
       };
+
+    case "suggestion-applied": {
+      const target = state.suggestions.find((s) => s.key === action.key);
+      if (target === undefined) return state;
+      const params = { ...state.draft.params };
+      (params as Record<string, unknown>)[target.key] = target.value;
+      return {
+        ...state,
+        draft: { ...state.draft, params },
+        // 適用済みの候補は一覧から取り除く。
+        suggestions: state.suggestions.filter((s) => s.key !== action.key),
+      };
+    }
+
+    case "suggestions-dismissed":
+      // draft.params は変更しない。
+      return { ...state, suggestions: [] };
 
     case "redo-requested":
       return { ...state, errorMessage: null, operation: { status: "idle" } };

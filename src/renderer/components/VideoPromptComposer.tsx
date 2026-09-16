@@ -98,6 +98,7 @@ export function VideoPromptComposer({
     copyState,
   } = state;
   const draft = state.draft.prompt;
+  const suggestions = state.suggestions;
   const params = state.draft.params;
   /** 種別ごとの資産パス (1件ずつ保持)。 */
   const assetPath = (k: LocalMediaAsset["kind"]) =>
@@ -348,7 +349,10 @@ export function VideoPromptComposer({
                 {": "}
               </span>
               <span>
-                {turn.text ?? (turn.messageKey ? t(turn.messageKey) : "")}
+                {turn.text ??
+                  (turn.messageKey
+                    ? t(turn.messageKey, turn.values ?? {})
+                    : "")}
               </span>
             </p>
           ))}
@@ -443,6 +447,40 @@ export function VideoPromptComposer({
             }}
           />
           <p id={HINT_ID}>{t("media.composer.hint.enterToSend")}</p>
+
+          {/* 補完が出した候補。自動適用はせず、ユーザーが明示的に適用する
+              (ADR-001 D1)。説明的な本文のため live region には入れない。 */}
+          {suggestions.length > 0 && (
+            <section aria-label={t("media.composer.suggestions.title")}>
+              <h3>{t("media.composer.suggestions.title")}</h3>
+              <ul>
+                {suggestions.map((s) => (
+                  <li key={s.key}>
+                    <span>
+                      {t(`media.composer.params.${s.key}`)}: {String(s.value)}
+                    </span>
+                    {s.reasonKey !== undefined && (
+                      <span>{t(`media.composer.reason.${s.reasonKey}`)}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatch({ type: "suggestion-applied", key: s.key })
+                      }
+                    >
+                      {t("media.composer.suggestions.apply")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: "suggestions-dismissed" })}
+              >
+                {t("media.composer.suggestions.dismiss")}
+              </button>
+            </section>
+          )}
 
           {/* 構造化パラメータ。値域はモデル依存のため、ここでは軽い UI guard のみ。 */}
           <fieldset>
