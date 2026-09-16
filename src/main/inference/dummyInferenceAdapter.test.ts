@@ -105,7 +105,11 @@ describe("runImageJob (拡張境界, Fake)", () => {
 describe("runVideoJob (拡張境界, Fake)", () => {
   it("動画種別を反映した成功ジョブを返す", async () => {
     const { adapter } = makeAdapter();
-    const r = await adapter.runVideoJob({ kind: "t2v", prompt: "a dog runs" });
+    const r = await adapter.runVideoJob({
+      kind: "t2v",
+      templateId: "dummy-t2v",
+      inputs: { prompt: "a dog runs" },
+    });
     expect(r.status).toBe("succeeded");
     expect(r.backend).toBe("dummy");
     expect(r.kind).toBe("t2v");

@@ -26,7 +26,7 @@
     "status": { "unsaved": "未儲存", "saving": "儲存中…", "saved": "已儲存" }
   },
   "media": {
-    "validation": { "summary": "輸入有問題", "missingPrompt": "請輸入內容", "forbiddenPrompt": "此類型無法指定內容", "missingParameter": "有未填寫的項目", "invalidDuration": "長度請填寫正數", "invalidFps": "fps 請填寫正整數", "invalidMotionStrength": "動態強度需在 0.0〜1.0 之間", "invalidResolution": "解析度指定無效", "invalidQualityPreset": "品質指定無效", "fpsNotAllowed": "無法使用此 fps", "durationNotAllowed": "無法使用此長度", "resolutionNotSupported": "無法使用此解析度", "qualityNotSupported": "無法使用此品質", "unsupportedCombination": "無法組合此解析度與品質", "frameConstraint": "無法組合此長度與 fps", "frameNotInteger": "長度 × fps 無法得到整數影格", "invalidAsset": "檔案路徑無效", "assetCount": "所需檔案不齊全" },
+    "validation": { "unsupportedKind": "沒有與此類型對應的範本", "summary": "輸入有問題", "missingPrompt": "請輸入內容", "forbiddenPrompt": "此類型無法指定內容", "missingParameter": "有未填寫的項目", "invalidDuration": "長度請填寫正數", "invalidFps": "fps 請填寫正整數", "invalidMotionStrength": "動態強度需在 0.0〜1.0 之間", "invalidResolution": "解析度指定無效", "invalidQualityPreset": "品質指定無效", "fpsNotAllowed": "無法使用此 fps", "durationNotAllowed": "無法使用此長度", "resolutionNotSupported": "無法使用此解析度", "qualityNotSupported": "無法使用此品質", "unsupportedCombination": "無法組合此解析度與品質", "frameConstraint": "無法組合此長度與 fps", "frameNotInteger": "長度 × fps 無法得到整數影格", "invalidAsset": "檔案路徑無效", "assetCount": "所需檔案不齊全" },
     "title": "媒體",
     "kind": {
       "label": "類型",

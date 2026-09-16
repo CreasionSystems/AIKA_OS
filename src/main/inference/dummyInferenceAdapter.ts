@@ -7,7 +7,7 @@ import type {
   InferencePort,
   TextGenerationRequest,
   TextGenerationResult,
-  VideoJobRequest,
+  RoutedVideoJob,
   VideoJobResult,
 } from "@shared/inference/port";
 
@@ -100,7 +100,8 @@ export class DummyInferenceAdapter implements InferencePort {
     };
   }
 
-  async runVideoJob(req: VideoJobRequest): Promise<VideoJobResult> {
+  /** inputs は実行に使わない (Dummy)。kind だけを結果と成果物パスに使う。 */
+  async runVideoJob(req: RoutedVideoJob): Promise<VideoJobResult> {
     await this.sleep(this.delayMs);
     const jobId = this.idFactory();
     return {

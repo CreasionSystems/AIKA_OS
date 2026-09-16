@@ -26,7 +26,7 @@
     "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "已保存" }
   },
   "media": {
-    "validation": { "summary": "输入存在问题", "missingPrompt": "请输入内容", "forbiddenPrompt": "该类型无法指定内容", "missingParameter": "存在未填写的项目", "invalidDuration": "时长请填写正数", "invalidFps": "fps 请填写正整数", "invalidMotionStrength": "运动强度需在 0.0〜1.0 之间", "invalidResolution": "分辨率指定无效", "invalidQualityPreset": "质量指定无效", "fpsNotAllowed": "无法使用该 fps", "durationNotAllowed": "无法使用该时长", "resolutionNotSupported": "无法使用该分辨率", "qualityNotSupported": "无法使用该质量", "unsupportedCombination": "无法组合该分辨率与质量", "frameConstraint": "无法组合该时长与 fps", "frameNotInteger": "时长 × fps 无法得到整数帧", "invalidAsset": "文件路径无效", "assetCount": "所需文件不齐全" },
+    "validation": { "unsupportedKind": "没有与该类型对应的模板", "summary": "输入存在问题", "missingPrompt": "请输入内容", "forbiddenPrompt": "该类型无法指定内容", "missingParameter": "存在未填写的项目", "invalidDuration": "时长请填写正数", "invalidFps": "fps 请填写正整数", "invalidMotionStrength": "运动强度需在 0.0〜1.0 之间", "invalidResolution": "分辨率指定无效", "invalidQualityPreset": "质量指定无效", "fpsNotAllowed": "无法使用该 fps", "durationNotAllowed": "无法使用该时长", "resolutionNotSupported": "无法使用该分辨率", "qualityNotSupported": "无法使用该质量", "unsupportedCombination": "无法组合该分辨率与质量", "frameConstraint": "无法组合该时长与 fps", "frameNotInteger": "时长 × fps 无法得到整数帧", "invalidAsset": "文件路径无效", "assetCount": "所需文件不齐全" },
     "title": "媒体",
     "kind": {
       "label": "类型",

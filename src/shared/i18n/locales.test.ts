@@ -97,6 +97,7 @@ const REQUIRED_KEYS = [
   "media.composer.hint.enterToSend",
   "media.composer.log.label",
   "media.validation.summary",
+  "media.validation.unsupportedKind",
   "media.validation.missingPrompt",
   "media.validation.forbiddenPrompt",
   "media.validation.missingParameter",

@@ -116,7 +116,8 @@ describe("submitVideoJob", () => {
       kind: "i2v",
       prompt: "犬",
       params: {
-        durationSec: 5,
+        // 81 frames / 16fps。Dummy descriptor の frameCount (4n+1) を満たす。
+        durationSec: 81 / 16,
         fps: 16,
         resolution: "720p",
         qualityPreset: "standard",
@@ -251,7 +252,8 @@ describe("submitVideoJob: main 側の再検証 (PR-E)", () => {
     kind: "t2v" as const,
     prompt: "夕暮れの海辺を歩く犬",
     params: {
-      durationSec: 5,
+      // 81 frames / 16fps。Dummy descriptor の frameCount (4n+1) を満たす。
+      durationSec: 81 / 16,
       fps: 16,
       resolution: "720p" as const,
       qualityPreset: "standard" as const,
@@ -300,5 +302,145 @@ describe("submitVideoJob: main 側の再検証 (PR-E)", () => {
     for (const issue of result.issues) {
       expect(issue.messageKey.startsWith("media.validation.")).toBe(true);
     }
+  });
+});
+
+describe("submitVideoJob: Router 境界 (PR-F2)", () => {
+  const PARAMS = {
+    durationSec: 81 / 16,
+    fps: 16,
+    resolution: "480p" as const,
+    qualityPreset: "high" as const,
+    motionStrength: 0.25,
+  };
+  const IMAGE = { kind: "image" as const, path: "/abs/in.png" };
+  const AUDIO = { kind: "audio" as const, path: "/abs/in.wav" };
+
+  /** port.runVideoJob の引数を記録するアダプタ。 */
+  function makeSpyService() {
+    const calls: unknown[] = [];
+    const port = {
+      healthCheck: async () => ({
+        status: "ok" as const,
+        adapter: "spy",
+        prompt: "",
+      }),
+      generateText: async () => {
+        throw new Error("unused");
+      },
+      generateCodePlan: async () => {
+        throw new Error("unused");
+      },
+      runImageJob: async () => {
+        throw new Error("unused");
+      },
+      runVideoJob: async (req: unknown) => {
+        calls.push(req);
+        return {
+          jobId: "backend-1",
+          status: "succeeded" as const,
+          backend: "spy",
+          kind: "audio" as const,
+          artifacts: ["/abs/out.mp4"],
+        };
+      },
+    };
+    const queue = new JobQueue({ now: makeClock(), idFactory: () => "job-1" });
+    return {
+      svc: new InferenceService(port as never, queue),
+      calls,
+      queue,
+    };
+  }
+
+  it("kind / templateId / inputs が adapter 呼び出しまで保持される", async () => {
+    const { svc, calls } = makeSpyService();
+    const result = svc.submitVideoJob({
+      kind: "audio",
+      prompt: "海辺の音に合わせて",
+      params: PARAMS,
+      assets: [AUDIO, IMAGE],
+    });
+    expect(result.status).toBe("accepted");
+
+    // キューが実行するまで待つ。
+    await vi.waitFor(() => expect(calls.length).toBe(1));
+    const arg = calls[0] as {
+      kind: string;
+      templateId: string;
+      inputs: Record<string, unknown>;
+    };
+
+    expect(arg.kind).toBe("audio");
+    expect(arg.templateId).toBe("dummy-audio");
+    expect(arg.inputs).toMatchObject({
+      prompt: "海辺の音に合わせて",
+      durationSec: PARAMS.durationSec,
+      fps: PARAMS.fps,
+      resolution: "480p",
+      qualityPreset: "high",
+      motionStrength: 0.25,
+    });
+    // image asset と 非 image asset の両方が残る。
+    expect(arg.inputs.assets).toEqual([AUDIO, IMAGE]);
+  });
+
+  it("descriptor 違反の要求を main が拒否し、enqueue しない", async () => {
+    const { svc, calls } = makeSpyService();
+    const result = svc.submitVideoJob({
+      kind: "t2v",
+      prompt: "犬",
+      // 5秒 x 16fps = 80 frames。Dummy descriptor の 4n+1 を満たさない。
+      params: { ...PARAMS, durationSec: 5 },
+      assets: [],
+    });
+
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    expect(result.issues.map((i) => i.code)).toContain("frame-constraint");
+    expect(calls.length).toBe(0);
+  });
+
+  it("許容外の fps も main が拒否する (renderer を信頼しない)", () => {
+    const { svc } = makeSpyService();
+    const result = svc.submitVideoJob({
+      kind: "t2v",
+      prompt: "犬",
+      params: { ...PARAMS, fps: 30, durationSec: 3 },
+      assets: [],
+    });
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    expect(
+      result.issues.some((i) => i.code === "invalid-parameter" && i.field === "fps"),
+    ).toBe(true);
+  });
+
+  it("route() が null なら unsupported-kind を返し enqueue しない", () => {
+    const port = {
+      healthCheck: async () => ({ status: "ok" as const, adapter: "spy", prompt: "" }),
+      generateText: async () => { throw new Error("unused"); },
+      generateCodePlan: async () => { throw new Error("unused"); },
+      runImageJob: async () => { throw new Error("unused"); },
+      runVideoJob: async () => { throw new Error("should not be called"); },
+    };
+    const queue = new JobQueue({ now: makeClock(), idFactory: () => "job-1" });
+    const svc = new InferenceService(
+      port as never,
+      queue,
+      undefined,
+      { route: () => null },
+    );
+
+    const result = svc.submitVideoJob({
+      kind: "t2v",
+      prompt: "犬",
+      params: PARAMS,
+      assets: [],
+    });
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    expect(result.issues[0]?.code).toBe("unsupported-kind");
+    expect(result.issues[0]?.messageKey).toBe("media.validation.unsupportedKind");
   });
 });
