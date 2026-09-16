@@ -38,10 +38,28 @@ export interface LocalMediaAsset {
   path: string;
 }
 
-/** UI 既定値。capability が許さない場合は検証で弾く (黙って丸めない)。 */
+/** 列挙値の一覧 (descriptor 非依存の形式検証に使う)。 */
+export const RESOLUTIONS: readonly Resolution[] = ["480p", "720p", "1080p"];
+export const QUALITY_PRESETS: readonly QualityPreset[] = [
+  "draft",
+  "standard",
+  "high",
+];
+
+/**
+ * composer の UI 初期値。
+ *
+ * これらは descriptor 未接続期間における「画面上に見える初期値」であり、
+ * 共通 capability の値域でも Workflow Router の最終既定値でもない
+ * (ADR-001 D3b の注記を参照)。descriptor 接続後は Router / template default
+ * へ責務を移す。capability が許さない場合は検証で弾く (黙って丸めない)。
+ */
 export const DEFAULT_DURATION_SEC = 5;
-/** UI 既定値。0.0–1.0 の中央。 */
+/** 0.0–1.0 の中央。 */
 export const DEFAULT_MOTION_STRENGTH = 0.5;
+export const DEFAULT_FPS = 16;
+export const DEFAULT_RESOLUTION: Resolution = "720p";
+export const DEFAULT_QUALITY_PRESET: QualityPreset = "standard";
 
 /** 編集中の下書き。不足項目を表現するため params は Partial。 */
 export interface VideoDraft {

@@ -10,7 +10,11 @@ import type {
 } from "@shared/inference/port";
 import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
 import type { PromptRefinementPort } from "@shared/media/promptRefinement";
-import { VideoPromptComposer } from "./VideoPromptComposer";
+import {
+  VideoPromptComposer,
+  type ComposerSubmitOutcome,
+} from "./VideoPromptComposer";
+import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 
 /**
  * メディアタブ (画像/動画ジョブの境界 + ジョブ監視)。
@@ -185,24 +189,31 @@ export function MediaPanel({
    * 成功で解決、失敗 (投入失敗 or ジョブ失敗) で reject し、コンポーザ側で
    * error 状態 / retry を扱えるようにする。
    */
-  async function runVideoJob(req: { prompt: string; sourceImage?: string }) {
+  async function runVideoJob(
+    req: NormalizedVideoJobRequest,
+  ): Promise<ComposerSubmitOutcome> {
     setPhase("submitting");
     setJob(null);
-    const videoKind = kind as VideoKind;
-    const id = await getAikaApi().submitVideoJob(
-      sourceRequired && req.sourceImage !== undefined
-        ? { kind: videoKind, prompt: req.prompt, sourceImage: req.sourceImage }
-        : { kind: videoKind, prompt: req.prompt },
-    );
-    if (!mounted.current) return;
+    const result = await getAikaApi().submitVideoJob(req);
+    if (result.status === "invalid") {
+      // 検証失敗は例外ではなく明細として返し、コンポーザが field error を出す。
+      if (mounted.current) setPhase("idle");
+      return { status: "invalid", issues: result.issues };
+    }
+    const id = result.jobId;
+    if (!mounted.current) return { status: "accepted", jobId: id, completion: Promise.resolve() };
     setJobId(id);
     setPhase("polling");
-    const final = await poll(id);
-    if (mounted.current) setPhase("idle");
-    await refreshHistory();
-    if (final?.state === "failed") {
-      throw new Error(final.error ?? "failed");
-    }
+    // 受理後のジョブ完了は別の Promise として返し、コンポーザが sending を出せるようにする。
+    const completion = (async () => {
+      const final = await poll(id);
+      if (mounted.current) setPhase("idle");
+      await refreshHistory();
+      if (final?.state === "failed") {
+        throw new Error(final.error ?? "failed");
+      }
+    })();
+    return { status: "accepted", jobId: id, completion };
   }
 
   async function onRefresh() {

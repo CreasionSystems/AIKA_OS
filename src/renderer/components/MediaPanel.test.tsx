@@ -26,7 +26,10 @@ function installAikaMock(over: {
   clearJobs?: AikaApi["clearJobs"];
 }) {
   const submitImageJob = vi.fn(over.submitImageJob ?? (async () => "job-1"));
-  const submitVideoJob = vi.fn(over.submitVideoJob ?? (async () => "job-1"));
+  const submitVideoJob = vi.fn(
+    over.submitVideoJob ??
+      (async () => ({ status: "accepted", jobId: "job-1" }) as const),
+  );
   const getJob = vi.fn(over.getJob ?? (async () => undefined));
   const getSettings = vi.fn(
     over.getSettings ?? (async () => DEFAULT_SETTINGS),
@@ -333,6 +336,14 @@ describe("MediaPanel (種別選択 / 動画コンポーザ)", () => {
       expect(submitVideoJob).toHaveBeenCalledWith({
         kind: "t2v",
         prompt: "夕暮れの街を走る車をシネマティックに",
+        params: {
+          durationSec: 5,
+          fps: 16,
+          resolution: "720p",
+          qualityPreset: "standard",
+          motionStrength: 0.5,
+        },
+        assets: [],
       }),
     );
     expect(submitImageJob).not.toHaveBeenCalled();
@@ -401,7 +412,14 @@ describe("MediaPanel (動画 sourceImage 入力)", () => {
       expect(submitVideoJob).toHaveBeenCalledWith({
         kind: "i2v",
         prompt: SUFFICIENT,
-        sourceImage: "/abs/in.png",
+        params: {
+          durationSec: 5,
+          fps: 16,
+          resolution: "720p",
+          qualityPreset: "standard",
+          motionStrength: 0.5,
+        },
+        assets: [{ kind: "image", path: "/abs/in.png" }],
       }),
     );
   });

@@ -26,6 +26,7 @@
     "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved" }
   },
   "media": {
+    "validation": { "summary": "There is a problem with the input", "missingPrompt": "Enter the content", "forbiddenPrompt": "Content cannot be set for this kind", "missingParameter": "Some fields are empty", "invalidDuration": "Length must be a positive number", "invalidFps": "fps must be a positive integer", "invalidMotionStrength": "Motion strength must be between 0.0 and 1.0", "invalidResolution": "Invalid resolution", "invalidQualityPreset": "Invalid quality", "fpsNotAllowed": "This fps is not available", "durationNotAllowed": "This length is not available", "resolutionNotSupported": "This resolution is not available", "qualityNotSupported": "This quality is not available", "unsupportedCombination": "This resolution and quality cannot be combined", "frameConstraint": "This length and fps cannot be combined", "frameNotInteger": "Length x fps does not yield whole frames", "invalidAsset": "Invalid file path", "assetCount": "Required files are missing" },
     "title": "Media",
     "kind": {
       "label": "Type",
@@ -80,6 +81,7 @@
       "asset": { "video": "Source video path", "audio": "Audio file path" },
       "suggestions": { "title": "Suggestions", "apply": "Apply", "dismiss": "Dismiss suggestions" },
       "reason": { "explicitDuration": "The instruction specifies a length", "slowMotion": "Slow motion was requested, so motion is reduced", "cinematic": "Cinematic was requested, so quality is raised" },
+      "frameSuggestion": { "title": "Length options", "apply": "Use this length" },
       "log": { "label": "Conversation log" },
       "turn": { "user": "You", "assistant": "Assistant", "followUp": "Checking a few details", "draft": "Proposed a prompt draft", "draftWithSuggestions_one": "Proposed a prompt draft ({{count}} suggestion)", "draftWithSuggestions_other": "Proposed a prompt draft ({{count}} suggestions)" },
       "hint": { "enterToSend": "Enter to send / Shift+Enter for a new line" },
@@ -97,7 +99,8 @@
         "error": "An error occurred",
         "copied": "Copied",
         "label": "Submission status",
-        "copyLabel": "Copy result"
+        "copyLabel": "Copy result",
+        "checking": "Checking the request…"
       },
       "question": {
         "subject": "What is the subject? (who or what, and the scene)",

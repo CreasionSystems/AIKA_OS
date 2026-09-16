@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VideoPromptComposer } from "./VideoPromptComposer";
+import { acceptingSubmit } from "./testSubmit";
 import type {
   PromptRefinementPort,
   RefineResult,
@@ -56,7 +57,7 @@ async function advanceToReady(
   )) as HTMLTextAreaElement;
 }
 
-function renderComposer(onSubmit = vi.fn(async () => {})) {
+function renderComposer(onSubmit = acceptingSubmit()) {
   render(
     <VideoPromptComposer
       kind="t2v"

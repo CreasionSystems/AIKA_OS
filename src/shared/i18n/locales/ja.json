@@ -26,6 +26,7 @@
     "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "保存しました" }
   },
   "media": {
+    "validation": { "summary": "入力に問題があります", "missingPrompt": "内容を入力してください", "forbiddenPrompt": "この種別では内容を指定できません", "missingParameter": "未入力の項目があります", "invalidDuration": "長さは正の数で指定してください", "invalidFps": "fps は正の整数で指定してください", "invalidMotionStrength": "モーション強度は 0.0〜1.0 で指定してください", "invalidResolution": "解像度の指定が不正です", "invalidQualityPreset": "品質の指定が不正です", "fpsNotAllowed": "この fps は使用できません", "durationNotAllowed": "この長さは使用できません", "resolutionNotSupported": "この解像度は使用できません", "qualityNotSupported": "この品質は使用できません", "unsupportedCombination": "解像度と品質の組み合わせが使用できません", "frameConstraint": "長さと fps の組み合わせが使用できません", "frameNotInteger": "長さ × fps が整数フレームになりません", "invalidAsset": "ファイルのパスが不正です", "assetCount": "必要なファイルが揃っていません" },
     "title": "メディア",
     "kind": {
       "label": "種別",
@@ -80,6 +81,7 @@
       "asset": { "video": "元動画のパス", "audio": "音声ファイルのパス" },
       "suggestions": { "title": "候補", "apply": "適用", "dismiss": "候補を閉じる" },
       "reason": { "explicitDuration": "指示に長さの指定があります", "slowMotion": "スローモーション指定のため動きを弱めます", "cinematic": "シネマティック指定のため品質を上げます" },
+      "frameSuggestion": { "title": "長さの候補", "apply": "この長さにする" },
       "log": { "label": "会話ログ" },
       "turn": { "user": "ユーザー", "assistant": "アシスタント", "followUp": "補足を確認しています", "draft": "プロンプト案を提示しました", "draftWithSuggestions_other": "プロンプト案を提示しました（候補 {{count}} 件）" },
       "hint": { "enterToSend": "Enter で送信 / Shift+Enter で改行" },
@@ -97,7 +99,8 @@
         "error": "エラーが発生しました",
         "copied": "コピーしました",
         "label": "送信状態",
-        "copyLabel": "コピー結果"
+        "copyLabel": "コピー結果",
+        "checking": "送信内容を確認中…"
       },
       "question": {
         "subject": "主題は何ですか？（被写体・場面）",

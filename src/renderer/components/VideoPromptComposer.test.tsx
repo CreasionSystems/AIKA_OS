@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VideoPromptComposer } from "./VideoPromptComposer";
+import { acceptingSubmit } from "./testSubmit";
 
 /**
  * 動画プロンプト対話型コンポーザの契約テスト。
@@ -22,7 +23,7 @@ afterEach(() => {
 
 describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
   it("十分な指示は follow-up を挟まず ready で最終案を出す", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(
       <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />,
@@ -40,7 +41,7 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
   });
 
   it("最終案を編集して送信すると onSubmit に編集後プロンプトを渡す", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(
       <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />,
@@ -54,7 +55,18 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
     await user.click(screen.getByRole("button", { name: "この内容で送信" }));
 
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith({ prompt: `${SUFFICIENT} 10秒` }),
+      expect(onSubmit).toHaveBeenCalledWith({
+        kind: "t2v",
+        prompt: `${SUFFICIENT} 10秒`,
+        params: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p",
+      qualityPreset: "standard",
+      motionStrength: 0.5,
+    },
+        assets: [],
+      }),
     );
     await waitFor(() =>
       expect(screen.getByRole("status", { name: "送信状態" })).toHaveTextContent("送信しました"),
@@ -64,7 +76,7 @@ describe("VideoPromptComposer (十分な指示 -> ready -> 送信)", () => {
 
 describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
   it("曖昧な指示では補足質問と候補チップを出す", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
@@ -81,7 +93,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
   });
 
   it("補足質問に答えて続けると ready へ進む", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
@@ -102,7 +114,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
   });
 
   it("候補チップを押すと指示に追記される", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
@@ -119,7 +131,7 @@ describe("VideoPromptComposer (曖昧 -> follow-up)", () => {
 
 describe("VideoPromptComposer (source 必須検証)", () => {
   it("source 必須で未入力なら送信を阻止し alert を出す", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="i2v" sourceRequired onSubmit={onSubmit} />);
 
@@ -138,7 +150,7 @@ describe("VideoPromptComposer (source 必須検証)", () => {
   });
 
   it("source を入力すれば onSubmit に含めて送信する", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="i2v" sourceRequired onSubmit={onSubmit} />);
 
@@ -150,8 +162,16 @@ describe("VideoPromptComposer (source 必須検証)", () => {
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
+        kind: "i2v",
         prompt: SUFFICIENT,
-        sourceImage: "/abs/in.png",
+        params: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p",
+      qualityPreset: "standard",
+      motionStrength: 0.5,
+    },
+        assets: [{ kind: "image", path: "/abs/in.png" }],
       }),
     );
   });
@@ -159,12 +179,23 @@ describe("VideoPromptComposer (source 必須検証)", () => {
 
 describe("VideoPromptComposer (error / retry)", () => {
   it("送信失敗で error 状態になり、alert 表示・retry で再送信できる", async () => {
-    const onSubmit = vi.fn(
-      async (_r: { prompt: string; sourceImage?: string }) => {},
-    );
+    // 1回目はジョブ完了で失敗し、2回目は成功する。
+    // completion は呼び出し時に生成する。mock 設定時に Promise.reject を
+    // 作ると、await されるまで未処理のまま残り unhandled rejection になる。
+    const onSubmit = acceptingSubmit();
     onSubmit
-      .mockRejectedValueOnce(new Error("backend down"))
-      .mockResolvedValueOnce(undefined);
+      .mockImplementationOnce(async () => ({
+        status: "accepted",
+        jobId: "job-1",
+        completion: (async () => {
+          throw new Error("backend down");
+        })(),
+      }))
+      .mockImplementationOnce(async () => ({
+        status: "accepted",
+        jobId: "job-2",
+        completion: Promise.resolve(),
+      }));
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
@@ -188,7 +219,7 @@ describe("VideoPromptComposer (error / retry)", () => {
 describe("VideoPromptComposer (a11y / 状態機械)", () => {
   it("status は role=status / polite / atomic で初期は idle 文言", () => {
     render(
-      <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={vi.fn(async () => {})} />,
+      <VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={acceptingSubmit()} />,
     );
     const status = screen.getByRole("status", { name: "送信状態" });
     expect(status).toHaveAttribute("aria-live", "polite");
@@ -197,7 +228,7 @@ describe("VideoPromptComposer (a11y / 状態機械)", () => {
   });
 
   it("成功後にやり直すと idle へ戻る", async () => {
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 

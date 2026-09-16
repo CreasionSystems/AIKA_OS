@@ -26,6 +26,7 @@
     "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "已保存" }
   },
   "media": {
+    "validation": { "summary": "输入存在问题", "missingPrompt": "请输入内容", "forbiddenPrompt": "该类型无法指定内容", "missingParameter": "存在未填写的项目", "invalidDuration": "时长请填写正数", "invalidFps": "fps 请填写正整数", "invalidMotionStrength": "运动强度需在 0.0〜1.0 之间", "invalidResolution": "分辨率指定无效", "invalidQualityPreset": "质量指定无效", "fpsNotAllowed": "无法使用该 fps", "durationNotAllowed": "无法使用该时长", "resolutionNotSupported": "无法使用该分辨率", "qualityNotSupported": "无法使用该质量", "unsupportedCombination": "无法组合该分辨率与质量", "frameConstraint": "无法组合该时长与 fps", "frameNotInteger": "时长 × fps 无法得到整数帧", "invalidAsset": "文件路径无效", "assetCount": "所需文件不齐全" },
     "title": "媒体",
     "kind": {
       "label": "类型",
@@ -80,6 +81,7 @@
       "asset": { "video": "源视频路径", "audio": "音频文件路径" },
       "suggestions": { "title": "候选", "apply": "应用", "dismiss": "关闭候选" },
       "reason": { "explicitDuration": "指令中指定了时长", "slowMotion": "指定了慢动作，因此减弱运动", "cinematic": "指定了电影感，因此提高质量" },
+      "frameSuggestion": { "title": "时长候选", "apply": "使用该时长" },
       "log": { "label": "对话记录" },
       "turn": { "user": "用户", "assistant": "助手", "followUp": "正在确认补充信息", "draft": "已提出提示词草案", "draftWithSuggestions_other": "已提出提示词草案（候选 {{count}} 项）" },
       "hint": { "enterToSend": "Enter 发送 / Shift+Enter 换行" },
@@ -97,7 +99,8 @@
         "error": "发生错误",
         "copied": "已复制",
         "label": "发送状态",
-        "copyLabel": "复制结果"
+        "copyLabel": "复制结果",
+        "checking": "正在确认发送内容…"
       },
       "question": {
         "subject": "主题是什么？（主体·场景）",

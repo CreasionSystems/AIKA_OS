@@ -1,3 +1,4 @@
+import type { ValidationIssue } from "@shared/media/videoValidation";
 /**
  * InferencePort — 推論基盤への唯一の境界 (Ports & Adapters)。
  *
@@ -61,6 +62,18 @@ export interface ImageJobRequest {
   model?: string;
 }
 
+/**
+ * 動画ジョブ投入の結果 (ADR-001 D9)。
+ *
+ * 検証失敗は throw ではなくユニオンで返す。IPC を跨ぐと Error の
+ * カスタムプロパティは structured clone で失われ、明細が届かないため。
+ * 想定外の失敗 (キュー障害など) のみ reject する。
+ */
+export type SubmitVideoJobResult =
+  | { status: "accepted"; jobId: string }
+  | { status: "invalid"; issues: readonly ValidationIssue[] };
+
+/** 生成バックエンドへ渡す最小形。正規化済み要求から main が組み立てる。 */
 export interface VideoJobRequest {
   kind: VideoKind;
   prompt?: string;

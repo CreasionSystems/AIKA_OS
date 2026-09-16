@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VideoPromptComposer } from "./VideoPromptComposer";
+import { acceptingSubmit } from "./testSubmit";
 import {
   composerReducer,
   derivePhase,
@@ -60,7 +61,7 @@ describe("適用規則 (reducer)", () => {
       "qualityPreset",
     ]);
     expect(s.draft.params).toEqual(before);
-    expect(s.draft.params.qualityPreset).toBeUndefined();
+    expect(s.draft.params.qualityPreset).toBe("standard");
     expect(s.draft.params.durationSec).toBe(5);
   });
 
@@ -166,7 +167,7 @@ describe("適用 UI", () => {
       <VideoPromptComposer
         kind="t2v"
         sourceRequired={false}
-        onSubmit={vi.fn(async () => {})}
+        onSubmit={acceptingSubmit()}
       />,
     );
     await user.type(
@@ -183,7 +184,7 @@ describe("適用 UI", () => {
 
     const panel = screen.getByRole("region", { name: "候補" });
     expect(within(panel).getByText("品質: high")).toBeInTheDocument();
-    expect(screen.getByLabelText("品質")).toHaveValue("");
+    expect(screen.getByLabelText("品質")).toHaveValue("standard");
 
     await user.click(within(panel).getAllByRole("button", { name: "適用" })[1]!);
     expect(screen.getByLabelText("品質")).toHaveValue("high");

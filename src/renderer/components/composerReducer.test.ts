@@ -150,10 +150,10 @@ describe("会話ログ (turns)", () => {
       at: 2,
       result: READY,
     });
-    const sending = composerReducer(ready, {
-      type: "send-requested",
-      requestId: "s1",
-    });
+    const sending = composerReducer(
+      composerReducer(ready, { type: "send-requested", requestId: "s1" }),
+      { type: "send-accepted", requestId: "s1", jobId: "job-1" },
+    );
     expect(sending.turns).toEqual(ready.turns);
     const done = composerReducer(sending, {
       type: "send-succeeded",
@@ -219,10 +219,10 @@ describe("stale response の破棄", () => {
       at: 2,
       result: READY,
     });
-    const sending = composerReducer(ready, {
-      type: "send-requested",
-      requestId: "s2",
-    });
+    const sending = composerReducer(
+      composerReducer(ready, { type: "send-requested", requestId: "s2" }),
+      { type: "send-accepted", requestId: "s2", jobId: "job-2" },
+    );
     expect(
       composerReducer(sending, { type: "send-succeeded", requestId: "s1" }),
     ).toBe(sending);
@@ -249,6 +249,7 @@ describe("エラーと復帰", () => {
     );
     const failed = run([
       { type: "send-requested", requestId: "s1" },
+      { type: "send-accepted", requestId: "s1", jobId: "job-1" },
       { type: "send-failed", requestId: "s1", message: "backend down" },
     ], ready);
 
@@ -279,6 +280,7 @@ describe("エラーと復帰", () => {
     const failed = run([
       { type: "refinement-succeeded", requestId: "r1", at: 2, result: READY },
       { type: "send-requested", requestId: "s1" },
+      { type: "send-accepted", requestId: "s1", jobId: "job-1" },
       { type: "send-failed", requestId: "s1", message: "x" },
       { type: "redo-requested" },
     ], refining());
@@ -380,6 +382,7 @@ describe("params と assets (PR-C)", () => {
     }));
     const failed = run([
       { type: "send-requested", requestId: "s1" },
+      { type: "send-accepted", requestId: "s1", jobId: "job-1" },
       { type: "send-failed", requestId: "s1", message: "backend down" },
     ], ready);
     expect(failed.draft.params.fps).toBe(16);
@@ -403,7 +406,7 @@ describe("params と assets (PR-C)", () => {
 
     const reseted = composerReducer(ready, { type: "reset-requested" });
     expect(reseted.draft.assets).toEqual([]);
-    expect(reseted.draft.params.fps).toBeUndefined();
+    expect(reseted.draft.params.fps).toBe(16);
     expect(reseted.draft.params.durationSec).toBe(5);
   });
 });
@@ -413,6 +416,7 @@ describe("redo と reset の切り分け", () => {
     return run([
       { type: "refinement-succeeded", requestId: "r1", at: 2, result: READY },
       { type: "send-requested", requestId: "s1" },
+      { type: "send-accepted", requestId: "s1", jobId: "job-1" },
       { type: "send-failed", requestId: "s1", message: "backend down" },
     ], refining());
   }
@@ -541,9 +545,14 @@ describe("旧 phase との対応", () => {
       at: 2,
       result: READY,
     });
-    const sending = composerReducer(ready, {
+    const checking = composerReducer(ready, {
       type: "send-requested",
       requestId: "s1",
+    });
+    const sending = composerReducer(checking, {
+      type: "send-accepted",
+      requestId: "s1",
+      jobId: "job-1",
     });
     const success = composerReducer(sending, {
       type: "send-succeeded",
@@ -559,6 +568,7 @@ describe("旧 phase との対応", () => {
     expect(derivePhase(validating)).toBe("validating");
     expect(derivePhase(followUp)).toBe("follow-up");
     expect(derivePhase(ready)).toBe("ready");
+    expect(derivePhase(checking)).toBe("checking");
     expect(derivePhase(sending)).toBe("sending");
     expect(derivePhase(success)).toBe("success");
     expect(derivePhase(error)).toBe("error");

@@ -5,10 +5,13 @@ import type {
   ImageJobRequest,
   ImageJobResult,
   InferencePort,
+  SubmitVideoJobResult,
   TextGenerationResult,
   VideoJobRequest,
   VideoJobResult,
 } from "@shared/inference/port";
+import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
+import { normalizeVideoJobRequest } from "@shared/media/videoValidation";
 import {
   WritingValidationError,
   normalizeWritingRequest,
@@ -24,8 +27,18 @@ import {
 export interface InferenceIpcService {
   generateText(req: WritingRequest): Promise<TextGenerationResult>;
   submitImageJob(req: ImageJobRequest): string;
-  submitVideoJob(req: VideoJobRequest): string;
+  submitVideoJob(req: NormalizedVideoJobRequest): SubmitVideoJobResult;
   getJob(id: string): Job | undefined;
+}
+
+/** 正規化済み要求を、現行アダプタが受け取れる最小形へ写す。 */
+function toPortRequest(req: NormalizedVideoJobRequest): VideoJobRequest {
+  const image = req.assets.find((a) => a.kind === "image");
+  return {
+    kind: req.kind,
+    prompt: req.prompt,
+    ...(image !== undefined ? { sourceImage: image.path } : {}),
+  };
 }
 
 /**
@@ -49,9 +62,26 @@ export class InferenceService implements InferenceIpcService {
     return this.queue.enqueue<ImageJobResult>(() => this.port.runImageJob(req));
   }
 
-  /** 動画生成ジョブを投入し、キューの jobId を返す。 */
-  submitVideoJob(req: VideoJobRequest): string {
-    return this.queue.enqueue<VideoJobResult>(() => this.port.runVideoJob(req));
+  /**
+   * 動画生成ジョブを投入する。
+   *
+   * renderer 由来の入力は信頼せず、受領物から同じ共有純粋関数で再検証する
+   * (ADR-001 D6)。検証に失敗した場合はキューに積まず、明細を返す。
+   */
+  submitVideoJob(req: NormalizedVideoJobRequest): SubmitVideoJobResult {
+    const result = normalizeVideoJobRequest(req.kind, {
+      prompt: req.prompt,
+      params: req.params,
+      assets: req.assets,
+    });
+    if (!result.valid) {
+      return { status: "invalid", issues: result.issues };
+    }
+    // 生成バックエンドへは最小形で渡す (実アダプタ接続は後続 PR)。
+    const jobId = this.queue.enqueue<VideoJobResult>(() =>
+      this.port.runVideoJob(toPortRequest(result.request)),
+    );
+    return { status: "accepted", jobId };
   }
 
   /**

@@ -115,6 +115,8 @@ function validateVideoParams(
 - `durationSec` の既定値は 5 (Wan 2.1 の代表構成 81 frames / 16fps ≒ 5秒)。**共通の上限は設けない** (LTX 系は 6〜20秒の選択肢を持つ)。共通で検証するのは「有限の正数」までとし、min/max/allowed は descriptor
 - `motionStrength` は 0.0–1.0 の正規化値、既定 0.5。これはモデルの物理パラメータではなく AIKA_OS の UI 意味論であり、SVD の `motion_bucket_id` (1–255) や AnimateDiff の motion scale とは意味が異なるため、**直接同一視しない**。写像は Router / capability 側
 
+> **composer の UI 初期値について (PR-E 追記)。** `fps` / `resolution` / `qualityPreset` の composer 初期値 (16 / 720p / standard) は、descriptor 未接続期間における **UI 初期値**であり、共通 capability 値域や Workflow Router の最終既定値を意味しない。画面上でユーザーが確認・変更できる値として扱う。descriptor 接続後は Router / template default へ責務を移す。PR-F で「未指定」を正規の状態として導入するか、Router がテンプレート既定で補完する責務へ移すかを再検討する。
+
 ### D3c. フレーム数制約 (durationSec × fps は独立ではない)
 
 UI の契約は秒と fps で独立させるが、**実行可能性は独立ではない**。Wan 2.1 はフレーム数が `4n+1` (代表 81)、LTX-Video は `8n+1` を要求する。
