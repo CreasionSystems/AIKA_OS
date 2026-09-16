@@ -191,6 +191,11 @@ export type ComposerAction =
   | { type: "send-accepted"; requestId: RequestId; jobId: string }
   | { type: "send-succeeded"; requestId: RequestId }
   | { type: "send-failed"; requestId: RequestId; message: string }
+  /**
+   * capability 由来の初期値を適用する。ユーザーが下書きに入る前 (idle かつ
+   * ドラフト未提示) にのみ効かせ、編集済みの値は上書きしない。
+   */
+  | { type: "capability-defaults-applied"; params: VideoGenerationParams }
   | { type: "suggestion-applied"; key: SuggestedParam["key"] }
   | { type: "suggestions-dismissed" }
   | { type: "redo-requested" }
@@ -435,6 +440,11 @@ export function composerReducer(
           message: action.message,
         },
       };
+
+    case "capability-defaults-applied":
+      // 編集が始まっていれば触らない (ADR-001 D8: 黙って書き換えない)。
+      if (state.draftProduced || state.operation.status !== "idle") return state;
+      return { ...state, draft: { ...state.draft, params: action.params } };
 
     case "suggestion-applied": {
       const target = state.suggestions.find((s) => s.key === action.key);

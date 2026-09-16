@@ -6,6 +6,8 @@ import { registerSettingsIpc } from "./ipc/registerSettingsIpc";
 import { registerUpdateIpc } from "./ipc/registerUpdateIpc";
 import { registerCodingIpc } from "./ipc/registerCodingIpc";
 import { registerJobsIpc } from "./ipc/registerJobsIpc";
+import { registerWorkflowIpc } from "./ipc/registerWorkflowIpc";
+import { createDummyCapabilityProvider } from "./workflow/videoCapabilities";
 import { UpdateManager, FakeUpdateChecker } from "./update/updateManager";
 import { InferenceService } from "./inference/inferenceService";
 import { DummyInferenceAdapter } from "./inference/dummyInferenceAdapter";
@@ -86,6 +88,7 @@ app.whenReady().then(async () => {
   registerUpdateIpc(ipcMain, new UpdateManager(new FakeUpdateChecker(null)));
   registerCodingIpc(ipcMain, new CodingWorkflow(inference));
   registerJobsIpc(ipcMain, history);
+  registerWorkflowIpc(ipcMain, createDummyCapabilityProvider());
   createMainWindow();
 
   app.on("activate", () => {

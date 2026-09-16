@@ -15,6 +15,7 @@ import type {
   LocalMediaAsset,
   QualityPreset,
   Resolution,
+  VideoGenerationParams,
 } from "./videoRequest";
 
 /** prompt の必須性。VideoKind に固定せず descriptor で変更できる。 */
@@ -68,6 +69,18 @@ export interface VideoCapabilityDescriptor {
   resolutionQualityPairs?: readonly ResolutionQualityPair[];
   promptRequirement: PromptRequirement;
   assetRequirements: readonly AssetRequirement[];
+  /**
+   * テンプレートが推奨する初期値。UI の初期表示に使う。
+   *
+   * ADR-001 D8: Router はユーザー入力を黙って書き換えない。これは「提示」で
+   * あって「補完」ではなく、ユーザーが画面上で見た値だけが実行値になる。
+   */
+  defaults: VideoGenerationParams;
+  /**
+   * Router の内部識別子。UI はこの値を解釈しない (テンプレート知識を
+   * renderer に漏らさない: ADR-001 D2)。
+   */
+  templateId: string;
 }
 
 /**

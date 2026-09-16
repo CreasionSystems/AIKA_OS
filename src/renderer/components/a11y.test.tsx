@@ -19,6 +19,7 @@ function installAikaMock() {
     generateText: vi.fn(),
     submitImageJob: vi.fn(),
     submitVideoJob: vi.fn(),
+    getVideoCapability: vi.fn(async () => null),
     getJob: vi.fn(),
     getSettings: vi.fn(async () => DEFAULT_SETTINGS),
     saveSettings: vi.fn(),
