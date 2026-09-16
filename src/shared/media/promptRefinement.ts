@@ -7,11 +7,23 @@
  * 実装するアダプタへ差し替えて行う。当面は決定的な Dummy を用いる。
  */
 
+import type {
+  LocalMediaAsset,
+  VideoGenerationParams,
+} from "./videoRequest";
+
 export interface RefineInput {
   /** ユーザーの自由指示 (自然文)。 */
   instruction: string;
   /** 補足質問への回答 (question id -> 回答文)。任意。 */
   answers?: Record<string, string>;
+  /**
+   * 編集中の下書きとパラメータ候補 (ADR-001 D4)。型のみの先行で、
+   * 現行の Dummy 実装は参照しない。会話履歴 turns は渡さない。
+   */
+  currentDraft?: string;
+  currentParams?: Partial<VideoGenerationParams>;
+  assets?: readonly LocalMediaAsset[];
 }
 
 /** 補足が必要: 質問と候補チップを提示する。 */
@@ -19,6 +31,12 @@ export interface FollowUpResult {
   status: "follow-up";
   questionIds: string[];
   chipIds: string[];
+  /**
+   * 意味 id ベースの質問 (ADR-001 D4)。型のみの先行で、接続は後続 PR。
+   * 既存の questionIds は当面そのまま使う。
+   */
+  questions?: readonly RefinementQuestion[];
+  suggestions?: readonly SuggestedParam[];
 }
 
 /** 十分: 最終プロンプト案と要約を返す。 */
@@ -26,6 +44,33 @@ export interface ReadyResult {
   status: "ready";
   draftPrompt: string;
   summary: string;
+  /**
+   * 構造化パラメータの候補 (ADR-001 D1/D4)。あくまで候補であり、
+   * ユーザー確認を経ずに実行値にしてはならない。型のみの先行。
+   */
+  suggestedParams?: readonly SuggestedParam[];
+}
+
+/**
+ * 補足質問。ローカライズ済み文字列ではなく意味 id を返し、Renderer が
+ * i18n キーへマップする (ADR-001 D4)。port が UI 文言やロケールに依存しない。
+ */
+export interface RefinementQuestion {
+  /** 例: "missing-source-image"。 */
+  id: string;
+  /** 関係する入力項目の名前。 */
+  fields?: readonly string[];
+}
+
+/** 構造化パラメータの候補。根拠と確信度を添えられる。 */
+export interface SuggestedParam<
+  K extends keyof VideoGenerationParams = keyof VideoGenerationParams,
+> {
+  key: K;
+  value: VideoGenerationParams[K];
+  confidence?: "low" | "medium" | "high";
+  /** 提案理由の意味 id。表示文言は Renderer が解決する。 */
+  reasonKey?: string;
 }
 
 export type RefineResult = FollowUpResult | ReadyResult;
