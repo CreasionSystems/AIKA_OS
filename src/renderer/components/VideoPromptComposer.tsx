@@ -1,4 +1,10 @@
-import { useRef, useState, type FormEvent } from "react";
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefObject,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   createDummyPromptRefinement,
@@ -19,6 +25,11 @@ import {
  *
  * a11y: 短い状態サマリーのみ live region、失敗のみ role="alert"、
  * すべての操作はキーボードで到達可能 (button / input / textarea)。
+ *
+ * キーボード: Enter で送信、Shift+Enter で改行。送信はボタン・Enter とも
+ * form の onSubmit に一本化する (Enter は requestSubmit() に委ねる)。
+ * 日本語 IME の変換確定 Enter を誤送信しないよう、isComposing /
+ * compositionstart-end の ref / keyCode===229 の3層でガードする。
  */
 type Phase =
   | "idle"
@@ -39,6 +50,16 @@ export interface VideoPromptComposerProps {
 }
 
 const ERROR_ID = "composer-error";
+const HINT_ID = "composer-keyboard-hint";
+
+/** IME 変換中の keydown か。isComposing だけでは環境差があるため 229 も見る。 */
+function isImeKeyDown(
+  event: ReactKeyboardEvent<HTMLElement>,
+  composing: boolean,
+): boolean {
+  const native = event.nativeEvent;
+  return composing || native.isComposing === true || native.keyCode === 229;
+}
 
 export function VideoPromptComposer({
   sourceRequired,
@@ -60,6 +81,34 @@ export function VideoPromptComposer({
   const [error, setError] = useState<string | null>(null);
 
   const instructionRef = useRef<HTMLTextAreaElement | null>(null);
+  const composeFormRef = useRef<HTMLFormElement | null>(null);
+  const sendFormRef = useRef<HTMLFormElement | null>(null);
+  /** IME 変換中か (compositionstart -> compositionend)。 */
+  const composingRef = useRef(false);
+
+  /**
+   * Enter で form の送信を要求する。Shift+Enter は textarea 標準の改行に委ね、
+   * IME 変換中の Enter は何もしない。実処理は form の onSubmit 側にある。
+   */
+  function handleEnterKey(
+    event: ReactKeyboardEvent<HTMLTextAreaElement>,
+    formRef: RefObject<HTMLFormElement | null>,
+  ) {
+    if (event.key !== "Enter") return;
+    if (event.shiftKey) return;
+    if (isImeKeyDown(event, composingRef.current)) return;
+    event.preventDefault();
+    formRef.current?.requestSubmit();
+  }
+
+  const compositionHandlers = {
+    onCompositionStart: () => {
+      composingRef.current = true;
+    },
+    onCompositionEnd: () => {
+      composingRef.current = false;
+    },
+  };
 
   /** 複数行入力を内容に応じて自動拡張する。 */
   function autoGrow(el: HTMLTextAreaElement | null) {
@@ -113,6 +162,8 @@ export function VideoPromptComposer({
   function onComposeSubmit(event: FormEvent) {
     event.preventDefault();
     if (instruction.trim() === "") return;
+    // 処理中の連打 (Enter / ボタンとも) で二重に走らせない。
+    if (phase === "validating") return;
     void compose();
   }
 
@@ -124,7 +175,14 @@ export function VideoPromptComposer({
     setAnswers((prev) => ({ ...prev, [id]: value }));
   }
 
+  function onSendSubmit(event: FormEvent) {
+    event.preventDefault();
+    void send();
+  }
+
   async function send() {
+    if (phase === "sending") return;
+    if (draft.trim() === "") return;
     setError(null);
     setSourceInvalid(false);
     if (sourceRequired && sourceImage.trim() === "") {
@@ -178,7 +236,7 @@ export function VideoPromptComposer({
       </p>
 
       {showComposeForm && (
-        <form onSubmit={onComposeSubmit}>
+        <form ref={composeFormRef} onSubmit={onComposeSubmit}>
           <label htmlFor="composer-instruction">
             {t("media.composer.instruction.label")}
           </label>
@@ -188,11 +246,16 @@ export function VideoPromptComposer({
             rows={3}
             value={instruction}
             placeholder={t("media.composer.instruction.placeholder")}
+            aria-describedby={HINT_ID}
+            onKeyDown={(e) => handleEnterKey(e, composeFormRef)}
+            {...compositionHandlers}
             onChange={(e) => {
               setInstruction(e.target.value);
               autoGrow(e.target);
             }}
           />
+          {/* 操作の手掛かり。live region の外に置く。 */}
+          <p id={HINT_ID}>{t("media.composer.hint.enterToSend")}</p>
 
           {phase === "follow-up" && followUp !== null && (
             <div>
@@ -240,7 +303,7 @@ export function VideoPromptComposer({
       )}
 
       {showReady && (
-        <div>
+        <form ref={sendFormRef} onSubmit={onSendSubmit}>
           <h3>{t("media.composer.summary.title")}</h3>
           <p>{summary}</p>
 
@@ -251,11 +314,15 @@ export function VideoPromptComposer({
             id="composer-final"
             rows={3}
             value={draft}
+            aria-describedby={HINT_ID}
+            onKeyDown={(e) => handleEnterKey(e, sendFormRef)}
+            {...compositionHandlers}
             onChange={(e) => {
               setDraft(e.target.value);
               autoGrow(e.target);
             }}
           />
+          <p id={HINT_ID}>{t("media.composer.hint.enterToSend")}</p>
 
           {sourceRequired && (
             <>
@@ -271,17 +338,13 @@ export function VideoPromptComposer({
             </>
           )}
 
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={composing || draft.trim() === ""}
-          >
+          <button type="submit" disabled={composing || draft.trim() === ""}>
             {t("media.composer.action.send")}
           </button>
           <button type="button" onClick={reset} disabled={composing}>
             {t("media.composer.action.redo")}
           </button>
-        </div>
+        </form>
       )}
 
       {phase === "success" && (

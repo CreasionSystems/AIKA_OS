@@ -73,6 +73,7 @@
         "redo": "다시 쓰기",
         "reset": "새로 만들기"
       },
+      "hint": { "enterToSend": "Enter로 전송 / Shift+Enter로 줄바꿈" },
       "followup": { "title": "조금 더 알려 주세요" },
       "chips": { "title": "추천" },
       "summary": { "title": "요약" },

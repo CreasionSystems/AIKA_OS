@@ -73,6 +73,7 @@
         "redo": "Rewrite",
         "reset": "Start new"
       },
+      "hint": { "enterToSend": "Enter to send / Shift+Enter for a new line" },
       "followup": { "title": "Tell me a bit more" },
       "chips": { "title": "Suggestions" },
       "summary": { "title": "Summary" },

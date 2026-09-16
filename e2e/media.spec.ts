@@ -98,3 +98,43 @@ test("media(video): i2v は十分な指示 + 元画像入力 -> 送信 -> 自動
 
   await app.close();
 });
+
+/**
+ * Step 41-1: 実 Chromium 上でのキーボード操作。
+ *
+ * OS の日本語 IME (変換確定 Enter) は Playwright / CDP からは安定して
+ * 再現できないため、ここでは通常 Enter と Shift+Enter の契約だけを見る。
+ * IME ガード自体は composerKeyboard.test.tsx のユニットテストで固定している。
+ */
+test("media(video): 指示入力の Enter で送信、Shift+Enter は改行", async () => {
+  const app = await electron.launch({
+    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
+  });
+  const page = await app.firstWindow();
+
+  await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
+  await page.getByLabel("種別").selectOption("t2v");
+
+  const instruction = page.getByLabel("作りたい動画の内容");
+
+  // Shift+Enter は送信せず改行を入れる (最終案は出ない)
+  await instruction.fill("夜の街を走る車をシネマティックに");
+  await instruction.press("Shift+Enter");
+  await expect(instruction).toHaveValue("夜の街を走る車をシネマティックに\n");
+  await expect(
+    page.getByLabel("最終プロンプト案（編集できます）"),
+  ).toBeHidden();
+
+  // Enter は送信 (ボタンを押さずに ready へ進む)
+  await instruction.press("Enter");
+  await expect(page.getByLabel("最終プロンプト案（編集できます）")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // 最終案でも Enter で送信できる
+  await page.getByLabel("最終プロンプト案（編集できます）").press("Enter");
+  await expect(page.getByText("送信しました")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("種別: t2v")).toBeVisible({ timeout: 15_000 });
+
+  await app.close();
+});

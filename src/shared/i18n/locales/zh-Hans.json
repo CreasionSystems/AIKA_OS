@@ -73,6 +73,7 @@
         "redo": "重新填写",
         "reset": "新建"
       },
+      "hint": { "enterToSend": "Enter 发送 / Shift+Enter 换行" },
       "followup": { "title": "请再补充一些" },
       "chips": { "title": "建议" },
       "summary": { "title": "摘要" },
