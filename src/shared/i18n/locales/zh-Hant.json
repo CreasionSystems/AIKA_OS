@@ -71,8 +71,10 @@
         "send": "以此傳送",
         "retry": "重試",
         "redo": "重新填寫",
-        "reset": "新建"
+        "reset": "新建",
+        "copy": "複製"
       },
+      "error": { "copyFailed": "無法複製", "copyLabel": "複製錯誤" },
       "hint": { "enterToSend": "Enter 傳送 / Shift+Enter 換行" },
       "followup": { "title": "請再補充一些" },
       "chips": { "title": "建議" },
@@ -85,7 +87,10 @@
         "ready": "提示詞草稿已就緒",
         "sending": "傳送中…",
         "success": "已傳送",
-        "error": "發生錯誤"
+        "error": "發生錯誤",
+        "copied": "已複製",
+        "label": "傳送狀態",
+        "copyLabel": "複製結果"
       },
       "question": {
         "subject": "主題是什麼？（主體·場景）",

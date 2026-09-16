@@ -71,8 +71,10 @@
         "send": "Envoyer ainsi",
         "retry": "Réessayer",
         "redo": "Réécrire",
-        "reset": "Nouveau"
+        "reset": "Nouveau",
+        "copy": "Copier"
       },
+      "error": { "copyFailed": "Copie impossible", "copyLabel": "Erreur de copie" },
       "hint": { "enterToSend": "Entrée pour envoyer / Maj+Entrée pour un saut de ligne" },
       "followup": { "title": "Donnez-moi un peu plus de détails" },
       "chips": { "title": "Suggestions" },
@@ -85,7 +87,10 @@
         "ready": "Votre brouillon d'invite est prêt",
         "sending": "Envoi…",
         "success": "Envoyé",
-        "error": "Une erreur s'est produite"
+        "error": "Une erreur s'est produite",
+        "copied": "Copié",
+        "label": "État de l'envoi",
+        "copyLabel": "Résultat de la copie"
       },
       "question": {
         "subject": "Quel est le sujet ? (qui ou quoi, et la scène)",
