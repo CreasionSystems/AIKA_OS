@@ -180,18 +180,22 @@ describe("VideoPromptComposer (source 必須検証)", () => {
 describe("VideoPromptComposer (error / retry)", () => {
   it("送信失敗で error 状態になり、alert 表示・retry で再送信できる", async () => {
     // 1回目はジョブ完了で失敗し、2回目は成功する。
+    // completion は呼び出し時に生成する。mock 設定時に Promise.reject を
+    // 作ると、await されるまで未処理のまま残り unhandled rejection になる。
     const onSubmit = acceptingSubmit();
     onSubmit
-      .mockResolvedValueOnce({
+      .mockImplementationOnce(async () => ({
         status: "accepted",
         jobId: "job-1",
-        completion: Promise.reject(new Error("backend down")),
-      })
-      .mockResolvedValueOnce({
+        completion: (async () => {
+          throw new Error("backend down");
+        })(),
+      }))
+      .mockImplementationOnce(async () => ({
         status: "accepted",
         jobId: "job-2",
         completion: Promise.resolve(),
-      });
+      }));
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
 
