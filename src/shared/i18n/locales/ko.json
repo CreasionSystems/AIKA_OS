@@ -75,6 +75,8 @@
         "copy": "복사"
       },
       "error": { "copyFailed": "복사하지 못했습니다", "copyLabel": "복사 오류" },
+      "log": { "label": "대화 로그" },
+      "turn": { "user": "사용자", "assistant": "어시스턴트", "followUp": "추가 정보를 확인하고 있습니다", "draft": "프롬프트 초안을 제시했습니다" },
       "hint": { "enterToSend": "Enter로 전송 / Shift+Enter로 줄바꿈" },
       "followup": { "title": "조금 더 알려 주세요" },
       "chips": { "title": "추천" },

@@ -75,6 +75,8 @@
         "copy": "複製"
       },
       "error": { "copyFailed": "無法複製", "copyLabel": "複製錯誤" },
+      "log": { "label": "對話紀錄" },
+      "turn": { "user": "使用者", "assistant": "助理", "followUp": "正在確認補充資訊", "draft": "已提出提示詞草案" },
       "hint": { "enterToSend": "Enter 傳送 / Shift+Enter 換行" },
       "followup": { "title": "請再補充一些" },
       "chips": { "title": "建議" },

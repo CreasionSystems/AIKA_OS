@@ -1,7 +1,7 @@
 import {
   useEffect,
+  useReducer,
   useRef,
-  useState,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
@@ -11,6 +11,12 @@ import {
   createDummyPromptRefinement,
   type PromptRefinementPort,
 } from "@shared/media/promptRefinement";
+import {
+  composerReducer,
+  derivePhase,
+  initialComposerState,
+  type RequestId,
+} from "./composerReducer";
 
 /**
  * 動画プロンプトの対話型コンポーザ。
@@ -32,15 +38,6 @@ import {
  * 日本語 IME の変換確定 Enter を誤送信しないよう、isComposing /
  * compositionstart-end の ref / keyCode===229 の3層でガードする。
  */
-type Phase =
-  | "idle"
-  | "validating"
-  | "follow-up"
-  | "ready"
-  | "sending"
-  | "success"
-  | "error";
-
 export interface VideoPromptComposerProps {
   /** source 画像パスが必須の種別か。 */
   sourceRequired: boolean;
@@ -48,13 +45,12 @@ export interface VideoPromptComposerProps {
   onSubmit: (req: { prompt: string; sourceImage?: string }) => Promise<void>;
   /** 補完ポート (テスト差し替え用)。既定は決定的 Dummy。 */
   refine?: PromptRefinementPort;
+  /** 世代 id の採番 (テスト差し替え用)。既定は単調増加。 */
+  makeRequestId?: () => RequestId;
 }
 
 const ERROR_ID = "composer-error";
 const HINT_ID = "composer-keyboard-hint";
-
-/** コピーの結果表示。phase (送信の状態機械) とは独立に扱う。 */
-type CopyState = "idle" | "copied" | "failed";
 
 /** IME 変換中の keydown か。isComposing だけでは環境差があるため 229 も見る。 */
 function isImeKeyDown(
@@ -69,24 +65,35 @@ export function VideoPromptComposer({
   sourceRequired,
   onSubmit,
   refine = createDummyPromptRefinement(),
+  makeRequestId,
 }: VideoPromptComposerProps) {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [instruction, setInstruction] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [followUp, setFollowUp] = useState<{
-    questionIds: string[];
-    chipIds: string[];
-  } | null>(null);
-  const [draft, setDraft] = useState("");
-  const [summary, setSummary] = useState("");
-  const [sourceImage, setSourceImage] = useState("");
-  const [sourceInvalid, setSourceInvalid] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [state, dispatch] = useReducer(composerReducer, initialComposerState);
+  const {
+    turns,
+    instruction,
+    answers,
+    followUpIds: followUp,
+    draftPrompt: draft,
+    summary,
+    sourceImage,
+    sourceInvalid,
+    errorMessage: error,
+    copyState,
+  } = state;
+  const phase = derivePhase(state);
 
   /** コピー結果の表示を自動的に消すまでの時間 (ms)。 */
   const COPY_FEEDBACK_MS = 2000;
+
+  /** 世代 id の採番。テストからは決定的な実装を注入できる。 */
+  const seqRef = useRef(0);
+  const nextRequestId =
+    makeRequestId ??
+    (() => {
+      seqRef.current += 1;
+      return `req-${seqRef.current}`;
+    });
 
   const instructionRef = useRef<HTMLTextAreaElement | null>(null);
   const composeFormRef = useRef<HTMLFormElement | null>(null);
@@ -121,7 +128,10 @@ export function VideoPromptComposer({
   /** コピー結果の表示は一定時間で消す。送信の状態機械には影響しない。 */
   useEffect(() => {
     if (copyState === "idle") return;
-    const timer = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_MS);
+    const timer = setTimeout(
+      () => dispatch({ type: "copy-cleared" }),
+      COPY_FEEDBACK_MS,
+    );
     return () => clearTimeout(timer);
   }, [copyState, COPY_FEEDBACK_MS]);
 
@@ -130,9 +140,9 @@ export function VideoPromptComposer({
     if (draft.trim() === "") return;
     try {
       await navigator.clipboard.writeText(draft);
-      setCopyState("copied");
+      dispatch({ type: "copy-succeeded" });
     } catch {
-      setCopyState("failed");
+      dispatch({ type: "copy-failed" });
     }
   }
 
@@ -162,26 +172,25 @@ export function VideoPromptComposer({
     }
   }
 
-  /** 指示 + 回答を補完ポートへ渡し、follow-up か ready へ遷移する。 */
-  async function compose(nextAnswers: Record<string, string> = answers) {
-    setError(null);
-    setPhase("validating");
+  /**
+   * 指示 + 回答を補完ポートへ渡す。完了は requestId を伴い、進行中の世代と
+   * 一致しない結果は reducer が捨てる (古い応答で状態を上書きしない)。
+   */
+  async function compose(requestId: RequestId) {
     try {
-      const result = await refine.refine({ instruction, answers: nextAnswers });
-      if (result.status === "follow-up") {
-        setFollowUp({
-          questionIds: result.questionIds,
-          chipIds: result.chipIds,
-        });
-        setPhase("follow-up");
-      } else {
-        setDraft(result.draftPrompt);
-        setSummary(result.summary);
-        setPhase("ready");
-      }
+      const result = await refine.refine({ instruction, answers });
+      dispatch({
+        type: "refinement-succeeded",
+        requestId,
+        at: Date.now(),
+        result,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setPhase("error");
+      dispatch({
+        type: "refinement-failed",
+        requestId,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -190,15 +199,30 @@ export function VideoPromptComposer({
     if (instruction.trim() === "") return;
     // 処理中の連打 (Enter / ボタンとも) で二重に走らせない。
     if (phase === "validating") return;
-    void compose();
+    const requestId = nextRequestId();
+    const at = Date.now();
+    if (followUp === null) {
+      dispatch({ type: "instruction-submitted", requestId, at });
+    } else {
+      dispatch({
+        type: "follow-up-answered",
+        requestId,
+        at,
+        text: Object.values(answers)
+          .map((v) => v.trim())
+          .filter((v) => v !== "")
+          .join(" / "),
+      });
+    }
+    void compose(requestId);
   }
 
   function appendChip(text: string) {
-    setInstruction((prev) => (prev.trim() === "" ? text : `${prev} ${text}`));
+    dispatch({ type: "chip-appended", text });
   }
 
   function setAnswer(id: string, value: string) {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
+    dispatch({ type: "answer-changed", id, text: value });
   }
 
   function onSendSubmit(event: FormEvent) {
@@ -209,44 +233,39 @@ export function VideoPromptComposer({
   async function send() {
     if (phase === "sending") return;
     if (draft.trim() === "") return;
-    setError(null);
-    setSourceInvalid(false);
     if (sourceRequired && sourceImage.trim() === "") {
-      setSourceInvalid(true);
-      setError(t("media.error.sourceRequired"));
       // ready のまま alert を表示し、source を修正して再送信できる。
+      dispatch({
+        type: "send-rejected-locally",
+        message: t("media.error.sourceRequired"),
+      });
       return;
     }
-    setPhase("sending");
+    const requestId = nextRequestId();
+    dispatch({ type: "send-requested", requestId });
     try {
       await onSubmit({
         prompt: draft,
         ...(sourceRequired ? { sourceImage } : {}),
       });
-      setPhase("success");
+      dispatch({ type: "send-succeeded", requestId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setPhase("error");
+      dispatch({
+        type: "send-failed",
+        requestId,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
   /** すべて初期化して idle へ。 */
   function reset() {
-    setInstruction("");
-    setAnswers({});
-    setFollowUp(null);
-    setDraft("");
-    setSummary("");
-    setSourceImage("");
-    setSourceInvalid(false);
-    setError(null);
-    setPhase("idle");
+    dispatch({ type: "reset-requested" });
   }
 
   /** 最終案の編集へ戻る (指示は保持)。 */
   function redo() {
-    setError(null);
-    setPhase("ready");
+    dispatch({ type: "redo-requested" });
   }
 
   const composing = phase === "validating" || phase === "sending";
@@ -277,6 +296,25 @@ export function VideoPromptComposer({
         {copyState === "copied" ? t("media.composer.status.copied") : ""}
       </p>
 
+      {/* 会話ログ。末尾への追加のみ読み上げる。見た目のチャット化はしない。 */}
+      <section aria-label={t("media.composer.log.label")}>
+        <div role="log" aria-live="polite" aria-relevant="additions">
+          {turns.map((turn) => (
+            <p key={turn.id}>
+              <span>
+                {turn.role === "user"
+                  ? t("media.composer.turn.user")
+                  : t("media.composer.turn.assistant")}
+                {": "}
+              </span>
+              <span>
+                {turn.text ?? (turn.messageKey ? t(turn.messageKey) : "")}
+              </span>
+            </p>
+          ))}
+        </div>
+      </section>
+
       {showComposeForm && (
         <form ref={composeFormRef} onSubmit={onComposeSubmit}>
           <label htmlFor="composer-instruction">
@@ -292,7 +330,7 @@ export function VideoPromptComposer({
             onKeyDown={(e) => handleEnterKey(e, composeFormRef)}
             {...compositionHandlers}
             onChange={(e) => {
-              setInstruction(e.target.value);
+              dispatch({ type: "instruction-changed", text: e.target.value });
               autoGrow(e.target);
             }}
           />
@@ -360,7 +398,7 @@ export function VideoPromptComposer({
             onKeyDown={(e) => handleEnterKey(e, sendFormRef)}
             {...compositionHandlers}
             onChange={(e) => {
-              setDraft(e.target.value);
+              dispatch({ type: "draft-changed", text: e.target.value });
               autoGrow(e.target);
             }}
           />
@@ -373,7 +411,9 @@ export function VideoPromptComposer({
                 id="composer-source"
                 type="text"
                 value={sourceImage}
-                onChange={(e) => setSourceImage(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ type: "source-changed", path: e.target.value })
+                }
                 aria-invalid={sourceInvalid}
                 aria-describedby={sourceInvalid ? ERROR_ID : undefined}
               />
