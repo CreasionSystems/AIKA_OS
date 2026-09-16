@@ -1,6 +1,7 @@
 import { IPC_CHANNELS } from "@shared/ipc/contract";
 import type { InferenceIpcService } from "@main/inference/inferenceService";
-import type { ImageJobRequest, VideoJobRequest } from "@shared/inference/port";
+import type { ImageJobRequest } from "@shared/inference/port";
+import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { WritingRequest } from "@shared/writing/writingModes";
 
 /**
@@ -31,7 +32,8 @@ export function registerInferenceIpc(
     service.submitImageJob(req as ImageJobRequest),
   );
   ipcMain.handle(IPC_CHANNELS.submitVideoJob, (_event, req) =>
-    service.submitVideoJob(req as VideoJobRequest),
+    // 受領物は untrusted。service 側が共有純粋関数で再検証する。
+    service.submitVideoJob(req as NormalizedVideoJobRequest),
   );
   ipcMain.handle(IPC_CHANNELS.getJob, (_event, id) =>
     service.getJob(id as string),

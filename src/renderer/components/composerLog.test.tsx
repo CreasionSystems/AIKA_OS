@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VideoPromptComposer } from "./VideoPromptComposer";
+import { acceptingSubmit } from "./testSubmit";
 import type {
   PromptRefinementPort,
   RefineResult,
@@ -39,7 +40,7 @@ describe("会話ログの表示", () => {
       <VideoPromptComposer
         kind="t2v"
         sourceRequired={false}
-        onSubmit={vi.fn(async () => {})}
+        onSubmit={acceptingSubmit()}
         refine={readyRefine()}
       />,
     );
@@ -56,7 +57,7 @@ describe("会話ログの表示", () => {
       <VideoPromptComposer
         kind="t2v"
         sourceRequired={false}
-        onSubmit={vi.fn(async () => {})}
+        onSubmit={acceptingSubmit()}
         refine={readyRefine()}
       />,
     );
@@ -82,7 +83,7 @@ describe("会話ログの表示", () => {
       <VideoPromptComposer
         kind="t2v"
         sourceRequired={false}
-        onSubmit={vi.fn(async () => {})}
+        onSubmit={acceptingSubmit()}
         refine={readyRefine()}
       />,
     );
@@ -117,7 +118,7 @@ describe("世代管理 (stale response)", () => {
       <VideoPromptComposer
         kind="t2v"
         sourceRequired={false}
-        onSubmit={vi.fn(async () => {})}
+        onSubmit={acceptingSubmit()}
         refine={refine}
       />,
     );

@@ -22,9 +22,12 @@ import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
 import { DEFAULT_ASSET_REQUIREMENTS } from "@shared/media/videoCapability";
 import type {
   LocalMediaAsset,
+  NormalizedVideoJobRequest,
   QualityPreset,
   Resolution,
 } from "@shared/media/videoRequest";
+import { normalizeVideoJobRequest } from "@shared/media/videoValidation";
+import type { ValidationIssue } from "@shared/media/videoValidation";
 
 /**
  * 動画プロンプトの対話型コンポーザ。
@@ -46,6 +49,14 @@ import type {
  * 日本語 IME の変換確定 Enter を誤送信しないよう、isComposing /
  * compositionstart-end の ref / keyCode===229 の3層でガードする。
  */
+/**
+ * 送信の結果 (ADR-001 D9)。検証失敗は例外ではなくユニオンで返す。
+ * accepted の completion はジョブ完了を表し、sending 状態の区間を作る。
+ */
+export type ComposerSubmitOutcome =
+  | { status: "accepted"; jobId: string; completion: Promise<void> }
+  | { status: "invalid"; issues: readonly ValidationIssue[] };
+
 export interface VideoPromptComposerProps {
   /** 動画種別。必要な資産入力の出し分けに使う。 */
   kind: VideoKind;
@@ -56,8 +67,8 @@ export interface VideoPromptComposerProps {
    * 行わない (concrete descriptor は後続 PR)。渡せる形だけ先に用意する。
    */
   capability?: VideoCapabilityDescriptor;
-  /** 最終プロンプトの送信。成功で解決、失敗で reject。 */
-  onSubmit: (req: { prompt: string; sourceImage?: string }) => Promise<void>;
+  /** 正規化済み要求の送信。検証失敗は結果ユニオン、想定外の失敗は reject。 */
+  onSubmit: (req: NormalizedVideoJobRequest) => Promise<ComposerSubmitOutcome>;
   /** 補完ポート (テスト差し替え用)。既定は決定的 Dummy。 */
   refine?: PromptRefinementPort;
   /** 世代 id の採番 (テスト差し替え用)。既定は単調増加。 */
@@ -84,6 +95,7 @@ export function VideoPromptComposer({
   onSubmit,
   refine = createDummyPromptRefinement(),
   makeRequestId,
+  capability,
 }: VideoPromptComposerProps) {
   const { t } = useTranslation();
   const [state, dispatch] = useReducer(composerReducer, initialComposerState);
@@ -99,6 +111,16 @@ export function VideoPromptComposer({
   } = state;
   const draft = state.draft.prompt;
   const suggestions = state.suggestions;
+  const validationIssues = state.validationIssues;
+
+  /** 指定 field に紐づく検証指摘 (無ければ undefined)。 */
+  const issueFor = (field: string): ValidationIssue | undefined =>
+    validationIssues.find((i) => "field" in i && i.field === field);
+  /** frame 制約の指摘 (候補を持つ)。 */
+  const frameIssue = validationIssues.find(
+    (i): i is Extract<ValidationIssue, { code: "frame-constraint" }> =>
+      i.code === "frame-constraint",
+  );
   const params = state.draft.params;
   /** 種別ごとの資産パス (1件ずつ保持)。 */
   const assetPath = (k: LocalMediaAsset["kind"]) =>
@@ -198,6 +220,8 @@ export function VideoPromptComposer({
     switch (phase) {
       case "validating":
         return t("media.composer.status.validating");
+      case "checking":
+        return t("media.composer.status.checking");
       case "follow-up":
         return t("media.composer.status.followup");
       case "ready":
@@ -272,7 +296,7 @@ export function VideoPromptComposer({
   }
 
   async function send() {
-    if (phase === "sending") return;
+    if (phase === "sending" || phase === "checking") return;
     if (draft.trim() === "") return;
     if (sourceRequired && sourceImage.trim() === "") {
       // ready のまま alert を表示し、source を修正して再送信できる。
@@ -284,11 +308,26 @@ export function VideoPromptComposer({
     }
     const requestId = nextRequestId();
     dispatch({ type: "send-requested", requestId });
+
+    // renderer 側の早期検証。main も同じ共有純粋関数で再検証する (ADR-001 D6)。
+    const local = normalizeVideoJobRequest(kind, state.draft, capability);
+    if (!local.valid) {
+      dispatch({ type: "validation-failed", requestId, issues: local.issues });
+      return;
+    }
+
     try {
-      await onSubmit({
-        prompt: draft,
-        ...(sourceRequired ? { sourceImage } : {}),
-      });
+      const outcome = await onSubmit(local.request);
+      if (outcome.status === "invalid") {
+        dispatch({
+          type: "validation-failed",
+          requestId,
+          issues: outcome.issues,
+        });
+        return;
+      }
+      dispatch({ type: "send-accepted", requestId, jobId: outcome.jobId });
+      await outcome.completion;
       dispatch({ type: "send-succeeded", requestId });
     } catch (err) {
       dispatch({
@@ -309,10 +348,12 @@ export function VideoPromptComposer({
     dispatch({ type: "redo-requested" });
   }
 
-  const composing = phase === "validating" || phase === "sending";
+  const composing =
+    phase === "validating" || phase === "checking" || phase === "sending";
   const showComposeForm =
     phase === "idle" || phase === "validating" || phase === "follow-up";
-  const showReady = phase === "ready" || phase === "sending";
+  const showReady =
+    phase === "ready" || phase === "checking" || phase === "sending";
 
   return (
     <div>
@@ -496,7 +537,18 @@ export function VideoPromptComposer({
               step="any"
               value={params.durationSec ?? ""}
               onChange={(e) => setNumberParam("durationSec", e.target.value)}
+              aria-invalid={issueFor("durationSec") !== undefined}
+              aria-describedby={
+                issueFor("durationSec") !== undefined
+                  ? "composer-issue-durationSec"
+                  : undefined
+              }
             />
+            {issueFor("durationSec") !== undefined && (
+              <span id="composer-issue-durationSec">
+                {t(issueFor("durationSec")!.messageKey)}
+              </span>
+            )}
 
             <label htmlFor="composer-fps">{t("media.composer.params.fps")}</label>
             <input
@@ -506,7 +558,16 @@ export function VideoPromptComposer({
               step={1}
               value={params.fps ?? ""}
               onChange={(e) => setNumberParam("fps", e.target.value)}
+              aria-invalid={issueFor("fps") !== undefined}
+              aria-describedby={
+                issueFor("fps") !== undefined ? "composer-issue-fps" : undefined
+              }
             />
+            {issueFor("fps") !== undefined && (
+              <span id="composer-issue-fps">
+                {t(issueFor("fps")!.messageKey)}
+              </span>
+            )}
 
             <label htmlFor="composer-resolution">
               {t("media.composer.params.resolution")}
@@ -646,6 +707,38 @@ export function VideoPromptComposer({
         <p role="alert" id={ERROR_ID}>
           {error}
         </p>
+      )}
+
+      {/* 検証の失敗は form-level に要約1件だけ出す。明細は各入力欄に置く。 */}
+      {validationIssues.length > 0 && (
+        <p role="alert">{t("media.validation.summary")}</p>
+      )}
+
+      {/* frame 制約の修正候補。自動適用はせず、明示操作でのみ draft を変える。 */}
+      {frameIssue !== undefined && frameIssue.suggestions.length > 0 && (
+        <section aria-label={t("media.composer.frameSuggestion.title")}>
+          <ul>
+            {frameIssue.suggestions.map((s) => (
+              <li key={s.frameCount}>
+                <span>
+                  {s.durationSec} / {s.frameCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatch({
+                      type: "param-changed",
+                      key: "durationSec",
+                      value: s.durationSec,
+                    })
+                  }
+                >
+                  {t("media.composer.frameSuggestion.apply")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/* コピー失敗は握りつぶさず、失敗としてだけ alert に出す。 */}

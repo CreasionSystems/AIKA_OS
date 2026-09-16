@@ -112,7 +112,20 @@ describe("submitImageJob: 投入 -> 状態遷移 -> 結果取得", () => {
 describe("submitVideoJob", () => {
   it("動画種別を保持したまま succeeded になる", async () => {
     const svc = makeService();
-    const id = svc.submitVideoJob({ kind: "i2v", sourceImage: "/abs/in.png" });
+    const result = svc.submitVideoJob({
+      kind: "i2v",
+      prompt: "犬",
+      params: {
+        durationSec: 5,
+        fps: 16,
+        resolution: "720p",
+        qualityPreset: "standard",
+        motionStrength: 0.5,
+      },
+      assets: [{ kind: "image", path: "/abs/in.png" }],
+    });
+    expect(result.status).toBe("accepted");
+    const id = result.status === "accepted" ? result.jobId : "";
     await svc.whenSettled(id);
     const job = svc.getJob<VideoJobResult>(id);
     expect(job?.state).toBe("succeeded");
@@ -230,5 +243,62 @@ describe("generateCodePlan", () => {
   it("空の goal は拒否する", async () => {
     const svc = makeService();
     await expect(svc.generateCodePlan({ goal: "   " })).rejects.toThrow();
+  });
+});
+
+describe("submitVideoJob: main 側の再検証 (PR-E)", () => {
+  const VALID = {
+    kind: "t2v" as const,
+    prompt: "夕暮れの海辺を歩く犬",
+    params: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p" as const,
+      qualityPreset: "standard" as const,
+      motionStrength: 0.5,
+    },
+    assets: [],
+  };
+
+  it("正当な要求は accepted で jobId を返す", () => {
+    const svc = makeService();
+    const result = svc.submitVideoJob(VALID);
+    expect(result.status).toBe("accepted");
+    if (result.status !== "accepted") return;
+    expect(result.jobId).toBeTruthy();
+  });
+
+  it("renderer の結果を信頼せず、不正な要求は invalid を返す", () => {
+    const svc = makeService();
+    const result = svc.submitVideoJob({
+      ...VALID,
+      prompt: "   ",
+      params: { ...VALID.params, motionStrength: 9 },
+    });
+
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    const codes = result.issues.map((i) => i.code);
+    expect(codes).toContain("missing-prompt");
+    expect(codes).toContain("invalid-parameter");
+    // 検証に落ちた要求は jobId を返さない (キューへ渡していない)。
+    expect("jobId" in result).toBe(false);
+  });
+
+  it("i2v は必須資産が無ければ invalid になる", () => {
+    const svc = makeService();
+    const result = svc.submitVideoJob({ ...VALID, kind: "i2v", assets: [] });
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    expect(result.issues.map((i) => i.code)).toContain("asset-count");
+  });
+
+  it("表示文言ではなく messageKey を返す", () => {
+    const svc = makeService();
+    const result = svc.submitVideoJob({ ...VALID, prompt: "" });
+    if (result.status !== "invalid") return;
+    for (const issue of result.issues) {
+      expect(issue.messageKey.startsWith("media.validation.")).toBe(true);
+    }
   });
 });

@@ -2,9 +2,10 @@ import { IPC_CHANNELS, type AikaApi } from "@shared/ipc/contract";
 import type { Job } from "@main/jobs/jobQueue";
 import type {
   ImageJobRequest,
+  SubmitVideoJobResult,
   TextGenerationResult,
-  VideoJobRequest,
 } from "@shared/inference/port";
+import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
 import type { UpdateState } from "@main/update/updateManager";
@@ -39,8 +40,11 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
       invoke(IPC_CHANNELS.generateText, req) as Promise<TextGenerationResult>,
     submitImageJob: (req: ImageJobRequest) =>
       invoke(IPC_CHANNELS.submitImageJob, req) as Promise<string>,
-    submitVideoJob: (req: VideoJobRequest) =>
-      invoke(IPC_CHANNELS.submitVideoJob, req) as Promise<string>,
+    submitVideoJob: (req: NormalizedVideoJobRequest) =>
+      invoke(
+        IPC_CHANNELS.submitVideoJob,
+        req,
+      ) as Promise<SubmitVideoJobResult>,
     getJob: (id: string) =>
       invoke(IPC_CHANNELS.getJob, id) as Promise<Job | undefined>,
     getSettings: () =>

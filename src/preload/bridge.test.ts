@@ -88,7 +88,18 @@ describe("createAikaApi: channel への委譲と素通し", () => {
   it("submitVideoJob は内部 channel へ委譲する", async () => {
     const { invoke, calls } = makeInvokeSpy();
     const api = createAikaApi(invoke);
-    await api.submitVideoJob({ kind: "t2v", prompt: "a dog" });
+    await api.submitVideoJob({
+      kind: "t2v",
+      prompt: "a dog",
+      params: {
+        durationSec: 5,
+        fps: 16,
+        resolution: "720p",
+        qualityPreset: "standard",
+        motionStrength: 0.5,
+      },
+      assets: [],
+    });
     expect(calls[0]?.channel).toBe(IPC_CHANNELS.submitVideoJob);
   });
 

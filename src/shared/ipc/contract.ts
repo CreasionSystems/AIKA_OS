@@ -4,9 +4,10 @@ import type { CodingView } from "@main/coding/codingWorkflow";
 import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
 import type {
   ImageJobRequest,
+  SubmitVideoJobResult,
   TextGenerationResult,
-  VideoJobRequest,
 } from "@shared/inference/port";
+import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
 
@@ -41,7 +42,11 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
 export interface AikaApi {
   generateText(req: WritingRequest): Promise<TextGenerationResult>;
   submitImageJob(req: ImageJobRequest): Promise<string>;
-  submitVideoJob(req: VideoJobRequest): Promise<string>;
+  /**
+   * 正規化済み要求だけを送る。main 側は受領物を信頼せず再検証し、
+   * 検証失敗は例外ではなく結果ユニオンで返す (ADR-001 D6 / D9)。
+   */
+  submitVideoJob(req: NormalizedVideoJobRequest): Promise<SubmitVideoJobResult>;
   getJob(id: string): Promise<Job | undefined>;
   getSettings(): Promise<AppSettings>;
   saveSettings(patch: Partial<AppSettings>): Promise<AppSettings>;

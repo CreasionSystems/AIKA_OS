@@ -15,6 +15,10 @@ import type {
   FrameCountRule,
   VideoCapabilityDescriptor,
 } from "./videoCapability";
+import {
+  DEFAULT_ASSET_REQUIREMENTS,
+  DEFAULT_PROMPT_REQUIREMENT,
+} from "./videoCapability";
 import type {
   LocalMediaAsset,
   NormalizedVideoJobRequest,
@@ -23,6 +27,7 @@ import type {
   VideoDraft,
   VideoGenerationParams,
 } from "./videoRequest";
+import { QUALITY_PRESETS, RESOLUTIONS } from "./videoRequest";
 
 /** durationSec と fps から導出されるフレーム数。ユーザー入力としては公開しない。 */
 export interface FrameRequest {
@@ -233,6 +238,30 @@ function validateAssets(
   return issues;
 }
 
+/** 列挙値の形式検証。descriptor が無くても実行できる。 */
+function validateEnums(params: VideoGenerationParams): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  if (!RESOLUTIONS.includes(params.resolution)) {
+    issues.push({
+      code: "invalid-parameter",
+      field: "resolution",
+      value: params.resolution,
+      allowed: RESOLUTIONS,
+      messageKey: key("invalidResolution"),
+    });
+  }
+  if (!QUALITY_PRESETS.includes(params.qualityPreset)) {
+    issues.push({
+      code: "invalid-parameter",
+      field: "qualityPreset",
+      value: params.qualityPreset,
+      allowed: QUALITY_PRESETS,
+      messageKey: key("invalidQualityPreset"),
+    });
+  }
+  return issues;
+}
+
 /** 数値パラメータの基本検証 (値域は capability 側で見る)。 */
 function validateNumericBasics(
   params: VideoGenerationParams,
@@ -371,19 +400,26 @@ function missingParams(
 export function normalizeVideoJobRequest(
   kind: VideoKind,
   draft: VideoDraft,
-  capability: VideoCapabilityDescriptor,
+  capability?: VideoCapabilityDescriptor,
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
   const prompt = draft.prompt.trim();
 
-  if (capability.promptRequirement === "required" && prompt === "") {
+  // capability 未指定でも baseline 検証は必ず動かす。未指定そのものは
+  // validation error にせず、判定できない検証は黙って省く (ADR-001 D3b)。
+  const promptRequirement =
+    capability?.promptRequirement ?? DEFAULT_PROMPT_REQUIREMENT[kind];
+  const assetRequirements =
+    capability?.assetRequirements ?? DEFAULT_ASSET_REQUIREMENTS[kind];
+
+  if (promptRequirement === "required" && prompt === "") {
     issues.push({
       code: "missing-prompt",
       field: "prompt",
       messageKey: key("missingPrompt"),
     });
   }
-  if (capability.promptRequirement === "forbidden" && prompt !== "") {
+  if (promptRequirement === "forbidden" && prompt !== "") {
     issues.push({
       code: "forbidden-prompt",
       field: "prompt",
@@ -391,7 +427,7 @@ export function normalizeVideoJobRequest(
     });
   }
 
-  issues.push(...validateAssets(draft.assets, capability.assetRequirements));
+  issues.push(...validateAssets(draft.assets, assetRequirements));
 
   const missing = missingParams(draft.params);
   issues.push(...missing);
@@ -403,19 +439,35 @@ export function normalizeVideoJobRequest(
   const params = draft.params as VideoGenerationParams;
   const basics = validateNumericBasics(params);
   issues.push(...basics);
-  issues.push(...validateAgainstCapability(params, capability));
+  issues.push(...validateEnums(params));
+  if (capability !== undefined) {
+    // モデル固有の値域・組み合わせは descriptor がある時だけ見る。
+    issues.push(...validateAgainstCapability(params, capability));
+  }
 
-  // 基本検証を通った場合のみフレーム制約を見る (NaN などで無意味な候補を出さない)。
+  // 基本検証を通った場合のみフレーム数を見る (NaN などで無意味な候補を出さない)。
   if (basics.length === 0) {
     const frames = computeFrameRequest(params.durationSec, params.fps);
-    if (!satisfiesFrameRule(frames.requestedFrameCount, capability.frameCount)) {
+    if (capability !== undefined) {
+      if (!satisfiesFrameRule(frames.requestedFrameCount, capability.frameCount)) {
+        issues.push({
+          code: "frame-constraint",
+          requested: { durationSec: params.durationSec, fps: params.fps },
+          computedFrames: frames.requestedFrameCount,
+          constraint: capability.frameCount,
+          suggestions: suggestFrameAlternatives(frames, capability.frameCount),
+          messageKey: key("frameConstraint"),
+        });
+      }
+    } else if (!Number.isInteger(frames.requestedFrameCount)) {
+      // descriptor 非依存で言えるのはここまで: 秒 x fps は整数フレームになる必要がある。
       issues.push({
         code: "frame-constraint",
         requested: { durationSec: params.durationSec, fps: params.fps },
         computedFrames: frames.requestedFrameCount,
-        constraint: capability.frameCount,
-        suggestions: suggestFrameAlternatives(frames, capability.frameCount),
-        messageKey: key("frameConstraint"),
+        constraint: { kind: "modulo", modulus: 1, remainder: 0 },
+        suggestions: [],
+        messageKey: key("frameNotInteger"),
       });
     }
   }

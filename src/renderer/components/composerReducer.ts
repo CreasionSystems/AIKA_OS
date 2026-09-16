@@ -22,7 +22,14 @@ import type {
   VideoDraft,
   VideoGenerationParams,
 } from "@shared/media/videoRequest";
-import { DEFAULT_DURATION_SEC, DEFAULT_MOTION_STRENGTH } from "@shared/media/videoRequest";
+import type { ValidationIssue } from "@shared/media/videoValidation";
+import {
+  DEFAULT_DURATION_SEC,
+  DEFAULT_FPS,
+  DEFAULT_MOTION_STRENGTH,
+  DEFAULT_QUALITY_PRESET,
+  DEFAULT_RESOLUTION,
+} from "@shared/media/videoRequest";
 
 /** 非同期処理の世代 id。 */
 export type RequestId = string;
@@ -44,8 +51,11 @@ export interface ConversationTurn {
 export type OperationState =
   | { status: "idle" }
   | { status: "refining"; requestId: RequestId }
-  | { status: "sending"; requestId: RequestId }
-  | { status: "success"; requestId: RequestId }
+  /** 送信要求を受けてから、正規化・検証・受理判定が終わるまで。 */
+  | { status: "validating"; requestId: RequestId }
+  /** main 側で受理され、ジョブ投入処理が進んでいる間。 */
+  | { status: "sending"; requestId: RequestId; jobId: string }
+  | { status: "success"; requestId: RequestId; jobId: string }
   | { status: "error"; requestId: RequestId; message: string };
 
 /** コピーの結果表示。送信の状態機械から独立 (#19)。 */
@@ -77,6 +87,11 @@ export interface ComposerState {
    * draft.params とは別に保持し、ユーザーが適用したときだけ draft へ入る。
    */
   suggestions: readonly SuggestedParam[];
+  /**
+   * 検証由来の指摘 (PR-E)。refinement の候補とは発生理由も消える条件も
+   * 異なるため、同じ配列に入れない。
+   */
+  validationIssues: readonly ValidationIssue[];
   sourceInvalid: boolean;
   /** alert に出す本文。ローカル検証の拒否でも使うため operation とは分ける。 */
   errorMessage: string | null;
@@ -90,6 +105,7 @@ export interface ComposerState {
 export type DisplayPhase =
   | "idle"
   | "validating"
+  | "checking"
   | "follow-up"
   | "ready"
   | "sending"
@@ -103,9 +119,12 @@ export const initialComposerState: ComposerState = {
   followUpIds: null,
   draft: {
     prompt: "",
-    // 値域はモデルごとに異なるため、既定値だけを置き上限は持たない。
+    // 画面上に見える初期値。値域ではない (ADR-001 D3b 注記)。
     params: {
       durationSec: DEFAULT_DURATION_SEC,
+      fps: DEFAULT_FPS,
+      resolution: DEFAULT_RESOLUTION,
+      qualityPreset: DEFAULT_QUALITY_PRESET,
       motionStrength: DEFAULT_MOTION_STRENGTH,
     },
     assets: [],
@@ -113,6 +132,7 @@ export const initialComposerState: ComposerState = {
   draftProduced: false,
   summary: "",
   suggestions: [],
+  validationIssues: [],
   sourceInvalid: false,
   errorMessage: null,
   operation: { status: "idle" },
@@ -125,6 +145,8 @@ export function derivePhase(state: ComposerState): DisplayPhase {
   switch (state.operation.status) {
     case "refining":
       return "validating";
+    case "validating":
+      return "checking";
     case "sending":
       return "sending";
     case "success":
@@ -161,6 +183,12 @@ export type ComposerAction =
   | { type: "refinement-failed"; requestId: RequestId; message: string }
   | { type: "send-requested"; requestId: RequestId }
   | { type: "send-rejected-locally"; message: string }
+  | {
+      type: "validation-failed";
+      requestId: RequestId;
+      issues: readonly ValidationIssue[];
+    }
+  | { type: "send-accepted"; requestId: RequestId; jobId: string }
   | { type: "send-succeeded"; requestId: RequestId }
   | { type: "send-failed"; requestId: RequestId; message: string }
   | { type: "suggestion-applied"; key: SuggestedParam["key"] }
@@ -174,7 +202,7 @@ export type ComposerAction =
 /** 進行中の世代と一致する完了かどうか。 */
 function isCurrent(
   operation: OperationState,
-  status: "refining" | "sending",
+  status: "refining" | "validating" | "sending",
   requestId: RequestId,
 ): boolean {
   return operation.status === status && operation.requestId === requestId;
@@ -210,13 +238,20 @@ export function composerReducer(
 
     case "param-changed": {
       const params = { ...state.draft.params };
+      const rest = state.validationIssues.filter(
+        (i) => !("field" in i) || i.field !== action.key,
+      );
       if (action.value === undefined) {
         delete params[action.key];
       } else {
         // key と value は呼び出し側で対応付けているため、ここでは代入のみ行う。
         (params as Record<string, unknown>)[action.key] = action.value;
       }
-      return { ...state, draft: { ...state.draft, params } };
+      return {
+        ...state,
+        draft: { ...state.draft, params },
+        validationIssues: rest,
+      };
     }
 
     case "asset-changed": {
@@ -342,22 +377,55 @@ export function composerReducer(
         ...state,
         errorMessage: null,
         sourceInvalid: false,
-        operation: { status: "sending", requestId: action.requestId },
+        validationIssues: [],
+        operation: { status: "validating", requestId: action.requestId },
+      };
+
+    // 検証失敗は error にせず ready へ戻し、入力を保持したまま明細を出す。
+    case "validation-failed":
+      if (!isCurrent(state.operation, "validating", action.requestId)) {
+        return state;
+      }
+      return {
+        ...state,
+        validationIssues: action.issues,
+        operation: { status: "idle" },
+      };
+
+    case "send-accepted":
+      if (!isCurrent(state.operation, "validating", action.requestId)) {
+        return state;
+      }
+      return {
+        ...state,
+        operation: {
+          status: "sending",
+          requestId: action.requestId,
+          jobId: action.jobId,
+        },
       };
 
     // source 未入力などの手前で弾く検証。ready のまま修正・再送信できる。
     case "send-rejected-locally":
       return { ...state, sourceInvalid: true, errorMessage: action.message };
 
-    case "send-succeeded":
+    case "send-succeeded": {
       if (!isCurrent(state.operation, "sending", action.requestId)) return state;
+      const jobId =
+        state.operation.status === "sending" ? state.operation.jobId : "";
       return {
         ...state,
-        operation: { status: "success", requestId: action.requestId },
+        operation: { status: "success", requestId: action.requestId, jobId },
       };
+    }
 
     case "send-failed":
-      if (!isCurrent(state.operation, "sending", action.requestId)) return state;
+      if (
+        !isCurrent(state.operation, "sending", action.requestId) &&
+        !isCurrent(state.operation, "validating", action.requestId)
+      ) {
+        return state;
+      }
       return {
         ...state,
         errorMessage: action.message,
@@ -386,7 +454,12 @@ export function composerReducer(
       return { ...state, suggestions: [] };
 
     case "redo-requested":
-      return { ...state, errorMessage: null, operation: { status: "idle" } };
+      return {
+        ...state,
+        errorMessage: null,
+        validationIssues: [],
+        operation: { status: "idle" },
+      };
 
     case "reset-requested":
       return { ...initialComposerState, seq: state.seq };

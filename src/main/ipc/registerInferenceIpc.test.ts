@@ -73,9 +73,9 @@ function makeRecordingService() {
       calls.push({ method: "submitImageJob", args: [req] });
       return "img-job";
     }),
-    submitVideoJob: vi.fn((req) => {
+    submitVideoJob: vi.fn((req): { status: "accepted"; jobId: string } => {
       calls.push({ method: "submitVideoJob", args: [req] });
-      return "vid-job";
+      return { status: "accepted", jobId: "vid-job" };
     }),
     getJob: vi.fn((id): Job | undefined => {
       calls.push({ method: "getJob", args: [id] });

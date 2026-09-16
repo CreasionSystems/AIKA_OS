@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VideoPromptComposer } from "./VideoPromptComposer";
+import { acceptingSubmit } from "./testSubmit";
 import type {
   PromptRefinementPort,
   RefineResult,
@@ -43,7 +44,7 @@ async function advanceToReady(
 function renderComposer(
   kind: VideoKind = "t2v",
   sourceRequired = false,
-  onSubmit = vi.fn(async () => {}),
+  onSubmit = acceptingSubmit(),
 ) {
   render(
     <VideoPromptComposer
@@ -187,9 +188,9 @@ describe("種別ごとの資産入力", () => {
     );
   });
 
-  it("入力した資産パスが保持され、onSubmit には従来どおり sourceImage で渡す", async () => {
+  it("入力した資産パスが正規化済み要求の assets として渡る", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn(async () => {});
+    const onSubmit = acceptingSubmit();
     renderComposer("i2v", true, onSubmit);
     await advanceToReady(user);
 
@@ -197,8 +198,16 @@ describe("種別ごとの資産入力", () => {
     await user.click(screen.getByRole("button", { name: "この内容で送信" }));
 
     expect(onSubmit).toHaveBeenCalledWith({
+      kind: "i2v",
       prompt: SUFFICIENT,
-      sourceImage: "/abs/in.png",
+      params: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p",
+      qualityPreset: "standard",
+      motionStrength: 0.5,
+    },
+      assets: [{ kind: "image", path: "/abs/in.png" }],
     });
   });
 });
