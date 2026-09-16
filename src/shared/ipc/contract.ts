@@ -6,8 +6,10 @@ import type {
   ImageJobRequest,
   SubmitVideoJobResult,
   TextGenerationResult,
+  VideoKind,
 } from "@shared/inference/port";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
+import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
 import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
 
@@ -21,6 +23,7 @@ export const IPC_CHANNELS = {
   generateText: "aika:inference:generateText",
   submitImageJob: "aika:inference:submitImageJob",
   submitVideoJob: "aika:inference:submitVideoJob",
+  getVideoCapability: "aika:workflow:getVideoCapability",
   getJob: "aika:jobs:getJob",
   getSettings: "aika:settings:get",
   saveSettings: "aika:settings:save",
@@ -47,6 +50,13 @@ export interface AikaApi {
    * 検証失敗は例外ではなく結果ユニオンで返す (ADR-001 D6 / D9)。
    */
   submitVideoJob(req: NormalizedVideoJobRequest): Promise<SubmitVideoJobResult>;
+  /**
+   * 種別に対応するテンプレートの能力記述を返す。
+   * 対応テンプレートが無ければ null (エラーではない)。
+   */
+  getVideoCapability(
+    kind: VideoKind,
+  ): Promise<VideoCapabilityDescriptor | null>;
   getJob(id: string): Promise<Job | undefined>;
   getSettings(): Promise<AppSettings>;
   saveSettings(patch: Partial<AppSettings>): Promise<AppSettings>;

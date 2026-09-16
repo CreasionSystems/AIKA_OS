@@ -4,7 +4,9 @@ import type {
   ImageJobRequest,
   SubmitVideoJobResult,
   TextGenerationResult,
+  VideoKind,
 } from "@shared/inference/port";
+import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { WritingRequest } from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
@@ -45,6 +47,11 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
         IPC_CHANNELS.submitVideoJob,
         req,
       ) as Promise<SubmitVideoJobResult>,
+    getVideoCapability: (kind: VideoKind) =>
+      invoke(
+        IPC_CHANNELS.getVideoCapability,
+        kind,
+      ) as Promise<VideoCapabilityDescriptor | null>,
     getJob: (id: string) =>
       invoke(IPC_CHANNELS.getJob, id) as Promise<Job | undefined>,
     getSettings: () =>

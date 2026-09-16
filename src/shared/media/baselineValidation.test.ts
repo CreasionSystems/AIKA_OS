@@ -31,6 +31,14 @@ const WAN_LIKE: VideoCapabilityDescriptor = {
   supportedQualityPresets: ["draft", "standard", "high"],
   promptRequirement: "required",
   assetRequirements: [],
+  defaults: {
+    durationSec: 5,
+    fps: 16,
+    resolution: "720p",
+    qualityPreset: "standard",
+    motionStrength: 0.5,
+  },
+  templateId: "test",
 };
 
 function issues(result: ReturnType<typeof normalizeVideoJobRequest>) {

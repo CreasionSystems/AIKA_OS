@@ -41,6 +41,14 @@ function wanLike(
     supportedQualityPresets: ["draft", "standard", "high"],
     promptRequirement: DEFAULT_PROMPT_REQUIREMENT[kind],
     assetRequirements: DEFAULT_ASSET_REQUIREMENTS[kind],
+    defaults: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p",
+      qualityPreset: "standard",
+      motionStrength: 0.5,
+    },
+    templateId: "test",
     ...over,
   };
 }
@@ -55,6 +63,14 @@ function ltxLike(kind: VideoKind = "t2v"): VideoCapabilityDescriptor {
     supportedQualityPresets: ["draft", "standard", "high"],
     promptRequirement: DEFAULT_PROMPT_REQUIREMENT[kind],
     assetRequirements: DEFAULT_ASSET_REQUIREMENTS[kind],
+    defaults: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p",
+      qualityPreset: "standard",
+      motionStrength: 0.5,
+    },
+    templateId: "test",
   };
 }
 

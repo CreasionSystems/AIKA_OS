@@ -191,6 +191,23 @@ export function VideoPromptComposer({
     }
   }
 
+  /** capability があればそれを、無ければ baseline を選択肢にする。 */
+  const resolutionOptions = capability?.supportedResolutions ?? RESOLUTIONS;
+  const qualityOptions = capability?.supportedQualityPresets ?? QUALITY_PRESETS;
+  const fpsOptions = capability?.allowedFps;
+
+  /**
+   * capability が届いたら初期値を descriptor の defaults に置き換える。
+   * 未取得・取得失敗時は PR-E の visible default が fallback として残る。
+   */
+  useEffect(() => {
+    if (capability === undefined) return;
+    dispatch({
+      type: "capability-defaults-applied",
+      params: capability.defaults,
+    });
+  }, [capability]);
+
   /** 種別に必要な資産入力 (required は baseline の最小数から判断する)。 */
   const assetKinds = DEFAULT_ASSET_REQUIREMENTS[kind].map((r) => ({
     kind: r.kind,
@@ -551,6 +568,22 @@ export function VideoPromptComposer({
             )}
 
             <label htmlFor="composer-fps">{t("media.composer.params.fps")}</label>
+            {fpsOptions !== undefined ? (
+              // capability があるときは許容値だけを選ばせる。
+              <select
+                id="composer-fps"
+                value={params.fps ?? ""}
+                onChange={(e) => setNumberParam("fps", e.target.value)}
+                aria-invalid={issueFor("fps") !== undefined}
+              >
+                <option value="">{t("media.composer.params.unset")}</option>
+                {fpsOptions.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            ) : (
             <input
               id="composer-fps"
               type="number"
@@ -563,6 +596,7 @@ export function VideoPromptComposer({
                 issueFor("fps") !== undefined ? "composer-issue-fps" : undefined
               }
             />
+            )}
             {issueFor("fps") !== undefined && (
               <span id="composer-issue-fps">
                 {t(issueFor("fps")!.messageKey)}
@@ -587,7 +621,7 @@ export function VideoPromptComposer({
               }
             >
               <option value="">{t("media.composer.params.unset")}</option>
-              {RESOLUTIONS.map((r) => (
+              {resolutionOptions.map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
@@ -612,7 +646,7 @@ export function VideoPromptComposer({
               }
             >
               <option value="">{t("media.composer.params.unset")}</option>
-              {QUALITY_PRESETS.map((q) => (
+              {qualityOptions.map((q) => (
                 <option key={q} value={q}>
                   {t(`media.composer.quality.${q}`)}
                 </option>

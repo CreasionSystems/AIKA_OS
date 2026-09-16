@@ -20,6 +20,7 @@ import { DEFAULT_SETTINGS } from "@shared/settings/settings";
 function installAikaMock(over: {
   submitImageJob?: AikaApi["submitImageJob"];
   submitVideoJob?: AikaApi["submitVideoJob"];
+  getVideoCapability?: AikaApi["getVideoCapability"];
   getJob?: AikaApi["getJob"];
   getSettings?: AikaApi["getSettings"];
   listJobs?: AikaApi["listJobs"];
@@ -29,6 +30,10 @@ function installAikaMock(over: {
   const submitVideoJob = vi.fn(
     over.submitVideoJob ??
       (async () => ({ status: "accepted", jobId: "job-1" }) as const),
+  );
+  // 既定では capability 無し (fallback 初期値で立つ経路を既存テストで維持する)。
+  const getVideoCapability = vi.fn(
+    over.getVideoCapability ?? (async () => null),
   );
   const getJob = vi.fn(over.getJob ?? (async () => undefined));
   const getSettings = vi.fn(
@@ -40,6 +45,7 @@ function installAikaMock(over: {
     generateText: vi.fn(),
     submitImageJob,
     submitVideoJob,
+    getVideoCapability,
     getJob,
     getSettings,
     saveSettings: vi.fn(),
@@ -51,7 +57,14 @@ function installAikaMock(over: {
     listJobs,
     clearJobs,
   } as unknown as AikaApi;
-  return { submitImageJob, submitVideoJob, getJob, listJobs, clearJobs };
+  return {
+    submitImageJob,
+    submitVideoJob,
+    getVideoCapability,
+    getJob,
+    listJobs,
+    clearJobs,
+  };
 }
 
 /** 注入用: 待たない sleep。 */

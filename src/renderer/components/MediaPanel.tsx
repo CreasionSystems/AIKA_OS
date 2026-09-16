@@ -15,6 +15,7 @@ import {
   type ComposerSubmitOutcome,
 } from "./VideoPromptComposer";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
+import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
 
 /**
  * メディアタブ (画像/動画ジョブの境界 + ジョブ監視)。
@@ -99,6 +100,13 @@ export function MediaPanel({
   const [history, setHistory] = useState<JobHistoryEntry[]>([]);
 
   const sourceRequired = SOURCE_REQUIRED_KINDS.has(kind);
+  /**
+   * 種別に対応するテンプレートの能力記述。取得できないときは undefined のまま
+   * にして、コンポーザ側の fallback 初期値で立てる (UI を壊さない)。
+   */
+  const [capability, setCapability] = useState<
+    VideoCapabilityDescriptor | undefined
+  >(undefined);
   const isVideo = kind !== "image";
 
   // ポーリング周期: prop 明示指定を最優先、未指定なら設定値、なければ既定。
@@ -110,6 +118,24 @@ export function MediaPanel({
       mounted.current = false;
     };
   }, []);
+
+  // 種別が変わるたびに能力記述を取り直す。取得できなければ undefined のまま。
+  useEffect(() => {
+    if (!isVideo) {
+      setCapability(undefined);
+      return;
+    }
+    const videoKind = kind as VideoKind;
+    void getAikaApi()
+      .getVideoCapability(videoKind)
+      .then((cap) => {
+        if (mounted.current) setCapability(cap ?? undefined);
+      })
+      .catch(() => {
+        // 取得失敗は UI を壊さない。fallback 初期値で立てる。
+        if (mounted.current) setCapability(undefined);
+      });
+  }, [kind, isVideo]);
 
   useEffect(() => {
     if (pollInterval !== undefined) return;
@@ -259,6 +285,7 @@ export function MediaPanel({
       {isVideo ? (
         <VideoPromptComposer
           kind={kind as VideoKind}
+          {...(capability !== undefined ? { capability } : {})}
           sourceRequired={sourceRequired}
           onSubmit={runVideoJob}
           {...(refine ? { refine } : {})}
