@@ -59,6 +59,7 @@ async function advanceToReady(
 function renderComposer(onSubmit = vi.fn(async () => {})) {
   render(
     <VideoPromptComposer
+      kind="t2v"
       sourceRequired={false}
       onSubmit={onSubmit}
       refine={readyRefine()}

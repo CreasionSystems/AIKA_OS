@@ -75,6 +75,9 @@
         "copy": "Copy"
       },
       "error": { "copyFailed": "Could not copy", "copyLabel": "Copy error" },
+      "params": { "title": "Details", "durationSec": "Length (seconds)", "fps": "fps", "resolution": "Resolution", "qualityPreset": "Quality", "motionStrength": "Motion strength", "unset": "Not set" },
+      "quality": { "draft": "Draft", "standard": "Standard", "high": "High" },
+      "asset": { "video": "Source video path", "audio": "Audio file path" },
       "log": { "label": "Conversation log" },
       "turn": { "user": "You", "assistant": "Assistant", "followUp": "Checking a few details", "draft": "Proposed a prompt draft" },
       "hint": { "enterToSend": "Enter to send / Shift+Enter for a new line" },

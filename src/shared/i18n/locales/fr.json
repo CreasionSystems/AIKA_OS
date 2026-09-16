@@ -75,6 +75,9 @@
         "copy": "Copier"
       },
       "error": { "copyFailed": "Copie impossible", "copyLabel": "Erreur de copie" },
+      "params": { "title": "Détails", "durationSec": "Durée (secondes)", "fps": "fps", "resolution": "Résolution", "qualityPreset": "Qualité", "motionStrength": "Intensité du mouvement", "unset": "Non défini" },
+      "quality": { "draft": "Brouillon", "standard": "Standard", "high": "Haute" },
+      "asset": { "video": "Chemin de la vidéo source", "audio": "Chemin du fichier audio" },
       "log": { "label": "Journal de conversation" },
       "turn": { "user": "Vous", "assistant": "Assistant", "followUp": "Vérification de quelques détails", "draft": "Brouillon de prompt proposé" },
       "hint": { "enterToSend": "Entrée pour envoyer / Maj+Entrée pour un saut de ligne" },

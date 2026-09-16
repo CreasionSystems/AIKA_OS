@@ -75,6 +75,9 @@
         "copy": "複製"
       },
       "error": { "copyFailed": "無法複製", "copyLabel": "複製錯誤" },
+      "params": { "title": "詳細設定", "durationSec": "長度（秒）", "fps": "fps", "resolution": "解析度", "qualityPreset": "品質", "motionStrength": "動態強度", "unset": "未設定" },
+      "quality": { "draft": "草稿", "standard": "標準", "high": "高品質" },
+      "asset": { "video": "來源影片路徑", "audio": "音訊檔案路徑" },
       "log": { "label": "對話紀錄" },
       "turn": { "user": "使用者", "assistant": "助理", "followUp": "正在確認補充資訊", "draft": "已提出提示詞草案" },
       "hint": { "enterToSend": "Enter 傳送 / Shift+Enter 換行" },

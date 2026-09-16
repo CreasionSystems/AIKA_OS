@@ -37,6 +37,7 @@ describe("会話ログの表示", () => {
   it("role=log の領域が初回レンダリングから存在する", () => {
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={readyRefine()}
@@ -53,6 +54,7 @@ describe("会話ログの表示", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={readyRefine()}
@@ -78,6 +80,7 @@ describe("会話ログの表示", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={readyRefine()}
@@ -112,6 +115,7 @@ describe("世代管理 (stale response)", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={refine}

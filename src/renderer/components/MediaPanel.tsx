@@ -247,6 +247,7 @@ export function MediaPanel({
 
       {isVideo ? (
         <VideoPromptComposer
+          kind={kind as VideoKind}
           sourceRequired={sourceRequired}
           onSubmit={runVideoJob}
           {...(refine ? { refine } : {})}

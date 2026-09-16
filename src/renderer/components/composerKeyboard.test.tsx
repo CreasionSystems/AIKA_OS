@@ -106,6 +106,7 @@ describe("Step 41-1: 指示入力の Enter 送信 / Shift+Enter 改行", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -124,6 +125,7 @@ describe("Step 41-1: 指示入力の Enter 送信 / Shift+Enter 改行", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -142,6 +144,7 @@ describe("Step 41-1: 指示入力の Enter 送信 / Shift+Enter 改行", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -161,6 +164,7 @@ describe("Step 41-1: 指示入力の Enter 送信 / Shift+Enter 改行", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -187,6 +191,7 @@ describe("Step 41-1: IME 変換確定中の誤送信防止", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -204,6 +209,7 @@ describe("Step 41-1: IME 変換確定中の誤送信防止", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -221,6 +227,7 @@ describe("Step 41-1: IME 変換確定中の誤送信防止", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -249,6 +256,7 @@ describe("Step 41-1: submit 経路の一本化", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
@@ -275,6 +283,7 @@ describe("Step 41-1: submit 経路の一本化", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={onSubmit}
         refine={port}
@@ -303,6 +312,7 @@ describe("Step 41-1: submit 経路の一本化", () => {
     const user = userEvent.setup();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={onSubmit}
         refine={port}
@@ -328,6 +338,7 @@ describe("Step 41-1: submit 経路の一本化", () => {
     const { port } = countingRefine();
     render(
       <VideoPromptComposer
+        kind="t2v"
         sourceRequired={false}
         onSubmit={vi.fn(async () => {})}
         refine={port}
