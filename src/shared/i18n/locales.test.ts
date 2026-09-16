@@ -93,6 +93,7 @@ const REQUIRED_KEYS = [
   "media.composer.action.retry",
   "media.composer.action.redo",
   "media.composer.action.reset",
+  "media.composer.hint.enterToSend",
   "media.composer.followup.title",
   "media.composer.chips.title",
   "media.composer.summary.title",

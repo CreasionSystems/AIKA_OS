@@ -73,6 +73,7 @@
         "redo": "Réécrire",
         "reset": "Nouveau"
       },
+      "hint": { "enterToSend": "Entrée pour envoyer / Maj+Entrée pour un saut de ligne" },
       "followup": { "title": "Donnez-moi un peu plus de détails" },
       "chips": { "title": "Suggestions" },
       "summary": { "title": "Résumé" },
