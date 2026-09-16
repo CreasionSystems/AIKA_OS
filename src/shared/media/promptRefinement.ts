@@ -86,6 +86,13 @@ export const MIN_SUFFICIENT_CHARS = 15;
 /** 補足質問の意味 id (表示ラベルは i18n 側)。 */
 export const FOLLOW_UP_QUESTION_IDS = ["subject", "motion", "style"];
 
+/** 質問 id と、関係する構造化パラメータの対応 (表示文言は持たない)。 */
+export const FOLLOW_UP_QUESTIONS: readonly RefinementQuestion[] = [
+  { id: "subject" },
+  { id: "motion", fields: ["motionStrength"] },
+  { id: "style", fields: ["qualityPreset"] },
+];
+
 /** 候補チップの意味 id (表示ラベル・付与文言は i18n 側)。 */
 export const SUGGESTION_CHIP_IDS = ["cinematic", "anime", "slowMotion", "aerial"];
 
@@ -111,15 +118,62 @@ export function composeDraftPrompt(input: RefineInput): string {
 
 const SUMMARY_MAX = 48;
 
+/**
+ * 指示文から構造化パラメータの候補を決定的に導く (LLM なし)。
+ *
+ * ADR-001 D1: ここで返すのはあくまで候補であり、そのまま実行値にしてはならない。
+ * 適用はユーザーの明示操作を必要とする。
+ */
+export function suggestParamsFromInstruction(
+  instruction: string,
+): SuggestedParam[] {
+  const out: SuggestedParam[] = [];
+  const text = instruction;
+
+  const duration = /(\d+)\s*秒/.exec(text);
+  if (duration !== null) {
+    out.push({
+      key: "durationSec",
+      value: Number(duration[1]),
+      confidence: "high",
+      reasonKey: "explicitDuration",
+    });
+  }
+
+  if (text.includes("スローモーション") || text.includes("スロモ")) {
+    out.push({
+      key: "motionStrength",
+      value: 0.2,
+      confidence: "medium",
+      reasonKey: "slowMotion",
+    });
+  }
+
+  if (text.includes("シネマティック") || text.includes("映画")) {
+    out.push({
+      key: "qualityPreset",
+      value: "high",
+      confidence: "low",
+      reasonKey: "cinematic",
+    });
+  }
+
+  return out;
+}
+
 /** 決定的な Dummy 実装 (LLM なし)。 */
 export function createDummyPromptRefinement(): PromptRefinementPort {
   return {
     async refine(input: RefineInput): Promise<RefineResult> {
+      // questionIds は当面併存させる。renderer は questions があればそれを優先する。
+      const suggestions = suggestParamsFromInstruction(input.instruction);
       if (!isInstructionSufficient(input)) {
         return {
           status: "follow-up",
           questionIds: FOLLOW_UP_QUESTION_IDS,
           chipIds: SUGGESTION_CHIP_IDS,
+          questions: FOLLOW_UP_QUESTIONS,
+          ...(suggestions.length > 0 ? { suggestions } : {}),
         };
       }
       const draftPrompt = composeDraftPrompt(input);
@@ -127,7 +181,12 @@ export function createDummyPromptRefinement(): PromptRefinementPort {
         draftPrompt.length > SUMMARY_MAX
           ? `${draftPrompt.slice(0, SUMMARY_MAX)}…`
           : draftPrompt;
-      return { status: "ready", draftPrompt, summary };
+      return {
+        status: "ready",
+        draftPrompt,
+        summary,
+        ...(suggestions.length > 0 ? { suggestedParams: suggestions } : {}),
+      };
     },
   };
 }
