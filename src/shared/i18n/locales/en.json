@@ -23,7 +23,15 @@
       "option": { "system": "Follow system setting", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "Save" },
-    "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved" }
+    "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved" },
+    "validation": {
+      "invalidWritingMode": "Unknown writing mode: \"{{mode}}\"",
+      "invalidTheme": "Theme must be one of {{allowed}}.",
+      "invalidJobHistoryLimit": "The job history limit must be an integer of 1 or greater.",
+      "invalidPollInterval": "The media poll interval must be an integer between {{min}} and {{max}}.",
+      "invalidLanguage": "The display language must be one of {{allowed}}."
+    },
+    "error": { "saveFailed": "Could not save the settings." }
   },
   "media": {
     "validation": { "unsupportedKind": "No template is available for this kind", "summary": "There is a problem with the input", "missingPrompt": "Enter the content", "forbiddenPrompt": "Content cannot be set for this kind", "missingParameter": "Some fields are empty", "invalidDuration": "Length must be a positive number", "invalidFps": "fps must be a positive integer", "invalidMotionStrength": "Motion strength must be between 0.0 and 1.0", "invalidResolution": "Invalid resolution", "invalidQualityPreset": "Invalid quality", "fpsNotAllowed": "This fps is not available", "durationNotAllowed": "This length is not available", "resolutionNotSupported": "This resolution is not available", "qualityNotSupported": "This quality is not available", "unsupportedCombination": "This resolution and quality cannot be combined", "frameConstraint": "This length and fps cannot be combined", "frameNotInteger": "Length x fps does not yield whole frames", "invalidAsset": "Invalid file path", "assetCount": "Required files are missing" },

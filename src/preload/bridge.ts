@@ -2,6 +2,7 @@ import {
   IPC_CHANNELS,
   type AikaApi,
   type GenerateTextResult,
+  type SaveSettingsResult,
 } from "@shared/ipc/contract";
 import type { Job } from "@main/jobs/jobQueue";
 import type {
@@ -60,7 +61,7 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
     getSettings: () =>
       invoke(IPC_CHANNELS.getSettings) as Promise<AppSettings>,
     saveSettings: (patch: Partial<AppSettings>) =>
-      invoke(IPC_CHANNELS.saveSettings, patch) as Promise<AppSettings>,
+      invoke(IPC_CHANNELS.saveSettings, patch) as Promise<SaveSettingsResult>,
     checkUpdate: () =>
       invoke(IPC_CHANNELS.checkUpdate) as Promise<UpdateState>,
     planCode: (goal: string) =>

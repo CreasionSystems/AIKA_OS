@@ -44,9 +44,17 @@ export type SettingsViolationCode =
   | "INVALID_POLL_INTERVAL"
   | "INVALID_LANGUAGE";
 
+/**
+ * 検証違反の明細。
+ *
+ * 表示文言ではなく i18n キーと補間値で持つ。IPC を越えて renderer へ運ばれ、
+ * 表示は renderer が t() で決める。shared / service / IPC はロケール文字列を
+ * 持たない (6ロケール実訳の原則)。writing 側と同じ形に揃えてある。
+ */
 export interface SettingsViolation {
   code: SettingsViolationCode;
-  message: string;
+  messageKey: string;
+  messageParams?: Readonly<Record<string, string | number>>;
 }
 
 export type SettingsValidationResult =
@@ -87,13 +95,17 @@ export function validateSettings(
   ) {
     violations.push({
       code: "INVALID_WRITING_MODE",
-      message: `未知の文章作成モードです: "${String(patch.defaultWritingMode)}"`,
+      messageKey: "settings.validation.invalidWritingMode",
+      // 表示名への変換は renderer が writing.mode.option.* で行う。
+      messageParams: { mode: String(patch.defaultWritingMode) },
     });
   }
   if (patch.theme !== undefined && !isValidTheme(patch.theme)) {
     violations.push({
       code: "INVALID_THEME",
-      message: `theme は ${THEMES.join(" / ")} のいずれかです。`,
+      messageKey: "settings.validation.invalidTheme",
+      // 許容値はコードのまま運ぶ。renderer が選択肢ラベルへ翻訳して並べる。
+      messageParams: { allowed: THEMES.join(",") },
     });
   }
   if (
@@ -102,7 +114,7 @@ export function validateSettings(
   ) {
     violations.push({
       code: "INVALID_JOB_HISTORY_LIMIT",
-      message: "jobHistoryLimit は 1 以上の整数にしてください。",
+      messageKey: "settings.validation.invalidJobHistoryLimit",
     });
   }
   if (
@@ -111,13 +123,15 @@ export function validateSettings(
   ) {
     violations.push({
       code: "INVALID_POLL_INTERVAL",
-      message: `mediaPollIntervalMs は ${POLL_INTERVAL_MIN}〜${POLL_INTERVAL_MAX} の整数にしてください。`,
+      messageKey: "settings.validation.invalidPollInterval",
+      messageParams: { min: POLL_INTERVAL_MIN, max: POLL_INTERVAL_MAX },
     });
   }
   if (patch.language !== undefined && !isValidLanguage(patch.language)) {
     violations.push({
       code: "INVALID_LANGUAGE",
-      message: `language は ${LANGUAGE_SETTINGS.join(" / ")} のいずれかです。`,
+      messageKey: "settings.validation.invalidLanguage",
+      messageParams: { allowed: LANGUAGE_SETTINGS.join(",") },
     });
   }
 
