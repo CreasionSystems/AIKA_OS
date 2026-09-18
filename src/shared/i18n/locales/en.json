@@ -145,7 +145,15 @@
     "prompt": { "label": "Prompt" },
     "action": { "generate": "Generate", "generating": "Generating…" },
     "status": { "idle": "Not generated", "generating": "Generating…", "generated": "Generated" },
-    "result": { "label": "Generated result" }
+    "result": { "label": "Generated result" },
+    "validation": {
+      "unsupportedMode": "Unknown writing mode: \"{{mode}}\"",
+      "emptyPrompt": "Enter a prompt.",
+      "promptTooLong": "The prompt exceeds the limit of {{max}} characters.",
+      "temperatureNotAllowed": "In {{mode}} mode, temperature must be {{max}} or lower.",
+      "invalidMaxTokens": "maxTokens must be 1 or greater."
+    },
+    "error": { "generationFailed": "Generation failed." }
   },
   "update": {
     "title": "Updates",

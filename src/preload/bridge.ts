@@ -1,9 +1,12 @@
-import { IPC_CHANNELS, type AikaApi } from "@shared/ipc/contract";
+import {
+  IPC_CHANNELS,
+  type AikaApi,
+  type GenerateTextResult,
+} from "@shared/ipc/contract";
 import type { Job } from "@main/jobs/jobQueue";
 import type {
   ImageJobRequest,
   SubmitVideoJobResult,
-  TextGenerationResult,
   VideoKind,
 } from "@shared/inference/port";
 import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
@@ -39,7 +42,7 @@ export const AIKA_API_KEY = "aika";
 export function createAikaApi(invoke: IpcInvoke): AikaApi {
   return {
     generateText: (req: WritingRequest) =>
-      invoke(IPC_CHANNELS.generateText, req) as Promise<TextGenerationResult>,
+      invoke(IPC_CHANNELS.generateText, req) as Promise<GenerateTextResult>,
     submitImageJob: (req: ImageJobRequest) =>
       invoke(IPC_CHANNELS.submitImageJob, req) as Promise<string>,
     submitVideoJob: (req: NormalizedVideoJobRequest) =>

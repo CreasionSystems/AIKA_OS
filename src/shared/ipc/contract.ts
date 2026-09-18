@@ -10,7 +10,10 @@ import type {
 } from "@shared/inference/port";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
-import type { WritingRequest } from "@shared/writing/writingModes";
+import type {
+  WritingRequest,
+  WritingViolation,
+} from "@shared/writing/writingModes";
 import type { AppSettings } from "@shared/settings/settings";
 
 /**
@@ -39,11 +42,38 @@ export const IPC_CHANNELS = {
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
 
 /**
+ * 文章生成の結果 (Issue #24)。
+ *
+ * IPC を跨ぐと Error は name / message / stack だけの素の Error に作り直され、
+ * 独自プロパティは失われる。plain object を reject しても同じで、内容は
+ * `[object Object]` に潰れる。明細が境界を越えるのは resolve 経路だけのため、
+ * 成功・入力不正・予期しない失敗を値で識別できるユニオンにする。
+ *
+ * 例外から値への変換は IPC handler だけが行い、InferenceService は
+ * WritingValidationError を投げる契約のままにする。
+ *
+ * failed は表示用の意味 ID のみを持つ。元の例外本文・stack・channel 名などの
+ * 内部情報は renderer に渡さない。
+ */
+export type GenerateTextResult =
+  | { status: "succeeded"; result: TextGenerationResult }
+  | { status: "invalid"; issues: readonly WritingViolation[] }
+  | {
+      status: "failed";
+      messageKey: string;
+      messageParams?: Readonly<Record<string, string | number>>;
+    };
+
+/**
  * renderer に公開する最小 API 面。
  * すべて IPC 越しのため非同期 (Promise) で統一する。
  */
 export interface AikaApi {
-  generateText(req: WritingRequest): Promise<TextGenerationResult>;
+  /**
+   * 検証失敗は例外ではなく結果ユニオンで返す。IPC 越しでは Error の独自
+   * プロパティが失われ、違反明細が renderer に届かないため (Issue #24)。
+   */
+  generateText(req: WritingRequest): Promise<GenerateTextResult>;
   submitImageJob(req: ImageJobRequest): Promise<string>;
   /**
    * 正規化済み要求だけを送る。main 側は受領物を信頼せず再検証し、

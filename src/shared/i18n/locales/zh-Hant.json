@@ -145,7 +145,15 @@
     "prompt": { "label": "提示詞" },
     "action": { "generate": "生成", "generating": "生成中…" },
     "status": { "idle": "未生成", "generating": "生成中…", "generated": "已生成" },
-    "result": { "label": "生成結果" }
+    "result": { "label": "生成結果" },
+    "validation": {
+      "unsupportedMode": "未知的寫作模式：「{{mode}}」",
+      "emptyPrompt": "請輸入提示詞。",
+      "promptTooLong": "提示詞超過了 {{max}} 字的上限。",
+      "temperatureNotAllowed": "在{{mode}}模式下，temperature 需為 {{max}} 或更低。",
+      "invalidMaxTokens": "maxTokens 需為 1 或更大。"
+    },
+    "error": { "generationFailed": "產生失敗。" }
   },
   "update": {
     "title": "更新",

@@ -145,7 +145,15 @@
     "prompt": { "label": "プロンプト" },
     "action": { "generate": "生成", "generating": "生成中…" },
     "status": { "idle": "未生成", "generating": "生成中…", "generated": "生成しました" },
-    "result": { "label": "生成結果" }
+    "result": { "label": "生成結果" },
+    "validation": {
+      "unsupportedMode": "未知の文章作成モードです: \"{{mode}}\"",
+      "emptyPrompt": "プロンプトを入力してください。",
+      "promptTooLong": "プロンプトが上限 {{max}} 文字を超えています。",
+      "temperatureNotAllowed": "{{mode}} モードでは temperature は {{max}} 以下にしてください。",
+      "invalidMaxTokens": "maxTokens は 1 以上にしてください。"
+    },
+    "error": { "generationFailed": "生成できませんでした。" }
   },
   "update": {
     "title": "更新",

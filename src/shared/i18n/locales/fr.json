@@ -145,7 +145,15 @@
     "prompt": { "label": "Invite" },
     "action": { "generate": "Générer", "generating": "Génération…" },
     "status": { "idle": "Non généré", "generating": "Génération…", "generated": "Généré" },
-    "result": { "label": "Résultat généré" }
+    "result": { "label": "Résultat généré" },
+    "validation": {
+      "unsupportedMode": "Mode de rédaction inconnu : « {{mode}} »",
+      "emptyPrompt": "Saisissez une consigne.",
+      "promptTooLong": "La consigne dépasse la limite de {{max}} caractères.",
+      "temperatureNotAllowed": "En mode {{mode}}, temperature doit être au maximum {{max}}.",
+      "invalidMaxTokens": "maxTokens doit être supérieur ou égal à 1."
+    },
+    "error": { "generationFailed": "La génération a échoué." }
   },
   "update": {
     "title": "Mises à jour",

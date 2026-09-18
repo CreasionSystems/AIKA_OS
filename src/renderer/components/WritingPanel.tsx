@@ -2,19 +2,12 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { getAikaApi } from "@preload/windowApi";
-import {
-  WRITING_MODES,
-  WritingValidationError,
-} from "@shared/writing/writingModes";
+import { WRITING_MODES } from "@shared/writing/writingModes";
+import type { WritingViolation } from "@shared/writing/writingModes";
 import type { WritingMode } from "@shared/inference/port";
 
-/** エラーを利用者向けメッセージへ変換する。検証エラーは違反明細を出す。 */
-function toErrorMessage(err: unknown): string {
-  if (err instanceof WritingValidationError) {
-    return err.violations.map((v) => v.message).join(" / ");
-  }
-  return err instanceof Error ? err.message : String(err);
-}
+/** 想定外の失敗に使う表示用の意味 ID。内部情報は一切出さない。 */
+const GENERIC_ERROR_KEY = "writing.error.generationFailed";
 
 /**
  * 文章作成の最小画面。ラベルは i18n。
@@ -40,6 +33,18 @@ export function WritingPanel() {
 
   const running = status === "running";
 
+  /**
+   * 違反明細を表示文言にする。ロケール文字列は明細に含まれず、ここで決まる。
+   * モード名は補間前に翻訳する (明細はコードだけを運ぶ)。
+   */
+  function issueText(issue: WritingViolation): string {
+    const params = { ...(issue.messageParams ?? {}) };
+    if (typeof params.mode === "string") {
+      params.mode = t(`writing.mode.option.${params.mode}`);
+    }
+    return t(issue.messageKey, params);
+  }
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setStatus("running");
@@ -47,10 +52,22 @@ export function WritingPanel() {
     setResult(null);
     try {
       const res = await getAikaApi().generateText({ mode, prompt });
-      setResult(res.text);
-      setStatus("idle");
-    } catch (err) {
-      setError(toErrorMessage(err));
+      if (res.status === "succeeded") {
+        setResult(res.result.text);
+        setStatus("idle");
+        return;
+      }
+      if (res.status === "invalid") {
+        setError(res.issues.map(issueText).join(" / "));
+        setStatus("error");
+        return;
+      }
+      setError(t(res.messageKey, res.messageParams ?? {}));
+      setStatus("error");
+    } catch {
+      // IPC 自体の失敗 (プロセス断など) は依然 reject しうる。
+      // 生の err.message は channel 名を含むため表示しない。
+      setError(t(GENERIC_ERROR_KEY));
       setStatus("error");
     }
   }
