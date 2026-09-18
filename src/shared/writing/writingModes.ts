@@ -91,9 +91,17 @@ export type WritingViolationCode =
   | "TEMPERATURE_NOT_ALLOWED"
   | "INVALID_MAX_TOKENS";
 
+/**
+ * 検証違反の明細。
+ *
+ * 表示文言ではなく i18n キーと補間値で持つ。IPC を越えて renderer へ運ばれ、
+ * 表示は renderer が t() で決める。shared / service / IPC はロケール文字列を
+ * 持たない (6ロケール実訳の原則)。
+ */
 export interface WritingViolation {
   code: WritingViolationCode;
-  message: string;
+  messageKey: string;
+  messageParams?: Readonly<Record<string, string | number>>;
 }
 
 export interface NormalizedWritingRequest {
@@ -136,7 +144,8 @@ export function validateWritingRequest(
       violations: [
         {
           code: "UNSUPPORTED_MODE",
-          message: `未知の文章作成モードです: "${req.mode}"`,
+          messageKey: "writing.validation.unsupportedMode",
+          messageParams: { mode: req.mode },
         },
       ],
     };
@@ -147,28 +156,32 @@ export function validateWritingRequest(
   if (req.prompt.trim().length === 0) {
     violations.push({
       code: "EMPTY_PROMPT",
-      message: "プロンプトが空です。",
+      messageKey: "writing.validation.emptyPrompt",
     });
   }
 
   if (req.prompt.length > def.limits.maxPromptChars) {
     violations.push({
       code: "PROMPT_TOO_LONG",
-      message: `プロンプトが上限 ${def.limits.maxPromptChars} 文字を超えています。`,
+      messageKey: "writing.validation.promptTooLong",
+      messageParams: { max: def.limits.maxPromptChars },
     });
   }
 
   if (req.temperature !== undefined && req.temperature > def.limits.maxTemperature) {
     violations.push({
       code: "TEMPERATURE_NOT_ALLOWED",
-      message: `${def.label} モードでは temperature は ${def.limits.maxTemperature} 以下にしてください。`,
+      messageKey: "writing.validation.temperatureNotAllowed",
+      // モード名はコードで渡す。表示名への変換は renderer が
+      // writing.mode.option.* で行う (ここにロケール文字列を持たせない)。
+      messageParams: { mode: def.mode, max: def.limits.maxTemperature },
     });
   }
 
   if (req.maxTokens !== undefined && req.maxTokens <= 0) {
     violations.push({
       code: "INVALID_MAX_TOKENS",
-      message: "maxTokens は 1 以上にしてください。",
+      messageKey: "writing.validation.invalidMaxTokens",
     });
   }
 

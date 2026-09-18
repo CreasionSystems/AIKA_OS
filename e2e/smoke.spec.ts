@@ -35,11 +35,11 @@ test("smoke: 起動 -> 最初のウィンドウ -> window.aika.generateText", as
     .toBe("function");
 
   // 3: generateText が1回通る (Dummy は "[dummy:general] hi" を返す)
-  const text = await page.evaluate(
-    () =>
-      window.aika
-        .generateText({ mode: "general", prompt: "hi" })
-        .then((r) => r.text),
+  // 戻り値は結果ユニオンのため、成功分岐を確かめてから本文を取る (Issue #24)。
+  const text = await page.evaluate(() =>
+    window.aika
+      .generateText({ mode: "general", prompt: "hi" })
+      .then((r) => (r.status === "succeeded" ? r.result.text : null)),
   );
   expect(text).toContain("dummy:general");
 

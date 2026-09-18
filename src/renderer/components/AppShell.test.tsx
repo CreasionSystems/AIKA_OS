@@ -3,7 +3,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppShell } from "./AppShell";
 import { DEFAULT_SETTINGS } from "@shared/settings/settings";
-import type { AikaApi } from "@shared/ipc/contract";
+import type { AikaApi, GenerateTextResult } from "@shared/ipc/contract";
 import type { TextGenerationResult } from "@shared/inference/port";
 
 /**
@@ -15,12 +15,15 @@ import type { TextGenerationResult } from "@shared/inference/port";
  *  - 既存の文章作成・設定がシェル上で退行なく動く
  */
 
-const okResult: TextGenerationResult = {
+const okText: TextGenerationResult = {
   text: "生成結果テキスト",
   finishReason: "stop",
   model: "dummy",
   usage: { promptTokens: 1, completionTokens: 1 },
 };
+
+/** 成功の結果ユニオン (Issue #24)。 */
+const okResult: GenerateTextResult = { status: "succeeded", result: okText };
 
 function installAikaMock() {
   (window as unknown as { aika: AikaApi }).aika = {
