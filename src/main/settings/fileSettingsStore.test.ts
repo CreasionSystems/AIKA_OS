@@ -3,7 +3,10 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -111,5 +114,59 @@ describe("FileSettingsStore: 読み取り失敗の分類", () => {
       status: "unreadable",
       failure: "malformed",
     });
+  });
+});
+
+/**
+ * 書込みの保全 (#33)。
+ * 置き換えは atomic に行い、直前の内容を 1世代だけ残す。
+ */
+describe("FileSettingsStore: 書込みの保全", () => {
+  it("上書き前の内容を settings.json.bak に残す", async () => {
+    const file = tmpFile();
+    const store = new FileSettingsStore(file);
+    await store.write({ ...DEFAULT_SETTINGS, theme: "dark" });
+    await store.write({ ...DEFAULT_SETTINGS, theme: "light" });
+
+    expect(JSON.parse(readFileSync(`${file}.bak`, "utf-8")).theme).toBe("dark");
+    expect(await store.read()).toMatchObject({
+      status: "loaded",
+      raw: { theme: "light" },
+    });
+  });
+
+  it("初回の書込みではバックアップを作らず、一時ファイルも残さない", async () => {
+    const file = tmpFile();
+    await new FileSettingsStore(file).write(DEFAULT_SETTINGS);
+    expect(readdirSync(path.dirname(file))).toEqual(["settings.json"]);
+  });
+
+  it("read は .bak を読まない (本体が無ければ missing)", async () => {
+    const file = tmpFile();
+    writeFileSync(`${file}.bak`, JSON.stringify({ theme: "dark" }), "utf-8");
+    expect(await new FileSettingsStore(file).read()).toEqual({
+      status: "missing",
+    });
+  });
+
+  it("読取専用の設定ファイルには従来どおり書けない", async () => {
+    const file = tmpFile();
+    writeFileSync(file, JSON.stringify(DEFAULT_SETTINGS), "utf-8");
+    chmodSync(file, 0o444);
+    await expect(
+      new FileSettingsStore(file).write({ ...DEFAULT_SETTINGS, theme: "dark" }),
+    ).rejects.toMatchObject({ code: "EACCES" });
+    chmodSync(file, 0o644);
+    expect(JSON.parse(readFileSync(file, "utf-8")).theme).toBe(
+      DEFAULT_SETTINGS.theme,
+    );
+  });
+
+  it("既存ファイルの権限を変えない", async () => {
+    const file = tmpFile();
+    writeFileSync(file, JSON.stringify(DEFAULT_SETTINGS), "utf-8");
+    chmodSync(file, 0o600);
+    await new FileSettingsStore(file).write({ ...DEFAULT_SETTINGS, theme: "dark" });
+    expect(statSync(file).mode & 0o777).toBe(0o600);
   });
 });

@@ -1,11 +1,11 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import type {
   AppSettings,
   SettingsReadFailure,
   SettingsReadResult,
   SettingsStore,
 } from "@shared/settings/settings";
+import { writeFileAtomic } from "./atomicFileWriter";
 
 /** Node の例外を読み取り失敗の分類へ写す。 */
 function classify(err: unknown): SettingsReadFailure {
@@ -52,12 +52,14 @@ export class FileSettingsStore implements SettingsStore {
     }
   }
 
+  /**
+   * 置き換えは atomic に行い、直前の内容を 1世代だけ残す (#33)。
+   * 以前は writeFile で同じファイルを切り詰めて書き直しており、途中で失敗すると
+   * 空や途中までの JSON が残って、次回起動時に読めない設定になっていた (#31)。
+   */
   async write(settings: AppSettings): Promise<void> {
-    await mkdir(path.dirname(this.filePath), { recursive: true });
-    await writeFile(
-      this.filePath,
-      JSON.stringify(settings, null, 2),
-      "utf-8",
-    );
+    await writeFileAtomic(this.filePath, JSON.stringify(settings, null, 2), {
+      backupPath: `${this.filePath}.bak`,
+    });
   }
 }
