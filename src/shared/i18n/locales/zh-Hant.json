@@ -61,6 +61,21 @@
     "result": { "kind": "類型：{{kind}}" },
     "artifacts": { "label": "產物" },
     "history": { "title": "工作記錄", "clear": "清除記錄" },
+    "diagnostic": {
+      "summary": "目前環境無法執行",
+      "missingDependency": "找不到所需的相依項目",
+      "insufficientVram": "記憶體不足，無法以目前設定執行",
+      "unsupportedConfiguration": "目前環境不支援此組態",
+      "applySuggested": "套用輕量設定",
+      "details": "詳細資料：{{detail}}",
+      "status": { "label": "執行環境診斷", "blocked": "無法執行" },
+      "turn": {
+        "missingDependency": "因找不到所需的相依項目，已停止執行。",
+        "insufficientVram": "因記憶體不足已停止執行，並準備了輕量設定的候選項目。",
+        "unsupportedConfiguration": "因目前環境不支援此組態，已停止執行。"
+      }
+    },
+    "job": { "failed": "工作失敗", "incomplete": "無法確認工作是否完成" },
     "composer": {
       "instruction": {
         "label": "想製作的影片內容",

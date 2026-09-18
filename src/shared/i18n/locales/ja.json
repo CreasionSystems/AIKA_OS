@@ -61,6 +61,21 @@
     "result": { "kind": "種別: {{kind}}" },
     "artifacts": { "label": "生成物" },
     "history": { "title": "ジョブ履歴", "clear": "履歴をクリア" },
+    "diagnostic": {
+      "summary": "この環境では実行できません",
+      "missingDependency": "必要な依存関係が見つかりません",
+      "insufficientVram": "この設定を実行するにはメモリが不足しています",
+      "unsupportedConfiguration": "この構成はこの環境では実行できません",
+      "applySuggested": "軽量設定を適用",
+      "details": "詳細: {{detail}}",
+      "status": { "label": "実行環境の診断", "blocked": "実行できません" },
+      "turn": {
+        "missingDependency": "必要な依存関係が見つからないため、実行を止めました",
+        "insufficientVram": "メモリが足りないため実行を止めました。軽量設定の候補を用意しました",
+        "unsupportedConfiguration": "この構成はこの環境では実行できないため、実行を止めました"
+      }
+    },
+    "job": { "failed": "ジョブが失敗しました", "incomplete": "ジョブの完了を確認できませんでした" },
     "composer": {
       "instruction": {
         "label": "作りたい動画の内容",

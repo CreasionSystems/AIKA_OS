@@ -61,6 +61,21 @@
     "result": { "kind": "类型：{{kind}}" },
     "artifacts": { "label": "生成物" },
     "history": { "title": "任务历史", "clear": "清除历史" },
+    "diagnostic": {
+      "summary": "当前环境无法运行",
+      "missingDependency": "缺少所需的依赖项",
+      "insufficientVram": "内存不足，无法以当前设置运行",
+      "unsupportedConfiguration": "当前环境不支持该配置",
+      "applySuggested": "应用轻量设置",
+      "details": "详情：{{detail}}",
+      "status": { "label": "运行环境诊断", "blocked": "无法运行" },
+      "turn": {
+        "missingDependency": "因缺少所需依赖项，已停止运行。",
+        "insufficientVram": "因内存不足已停止运行，并准备了轻量设置的候选项。",
+        "unsupportedConfiguration": "因当前环境不支持该配置，已停止运行。"
+      }
+    },
+    "job": { "failed": "任务失败", "incomplete": "无法确认任务是否完成" },
     "composer": {
       "instruction": {
         "label": "想制作的视频内容",

@@ -437,3 +437,97 @@ describe("MediaPanel (動画 sourceImage 入力)", () => {
     );
   });
 });
+
+/**
+ * PR-G: 投入結果の受け渡しと completion の契約。
+ *
+ * blocked は例外ではなく明細として composer へ渡す。受理後の完了は成否とも
+ * reject せず解決値で伝え、未完了を成功として偽装しない。
+ */
+describe("MediaPanel (動画: 診断と completion)", () => {
+  const SUFFICIENT = "夕暮れの街を走る車をシネマティックに";
+
+  /** 動画の ready まで進める。 */
+  async function toVideoReady(user: ReturnType<typeof userEvent.setup>) {
+    await user.selectOptions(screen.getByLabelText("種別"), "t2v");
+    await user.type(screen.getByLabelText("作りたい動画の内容"), SUFFICIENT);
+    await user.click(screen.getByRole("button", { name: "内容をまとめる" }));
+    await screen.findByRole("button", { name: "この内容で送信" });
+  }
+
+  it("blocked をそのまま composer へ渡し、ポーリングを始めない", async () => {
+    const { getJob } = installAikaMock({
+      submitVideoJob: async () =>
+        ({
+          status: "blocked",
+          diagnostics: [
+            {
+              kind: "missing-dependency",
+              dependency: "wan2.2-t2v",
+              messageKey: "media.diagnostic.missingDependency",
+            },
+          ],
+        }) as never,
+    });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+    await toVideoReady(user);
+
+    await user.click(screen.getByRole("button", { name: "この内容で送信" }));
+
+    expect(
+      await screen.findByText("必要な依存関係が見つかりません"),
+    ).toBeInTheDocument();
+    expect(getJob).not.toHaveBeenCalled();
+  });
+
+  it("ジョブ失敗は reject ではなく失敗の完了結果として届く", async () => {
+    installAikaMock({ getJob: seqGetJob([queuedJob, failedJob]) });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+    await toVideoReady(user);
+
+    await user.click(screen.getByRole("button", { name: "この内容で送信" }));
+
+    // composer 側は error 状態になり、本文は i18n 済みの文言になる。
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "ジョブが失敗しました",
+    );
+    expect(
+      screen.getByRole("button", { name: "再試行" }),
+    ).toBeInTheDocument();
+  });
+
+  it("決着を見届けられなければ成功として扱わない", async () => {
+    // 上限まで queued のまま。従来はこれを success と表示していた。
+    installAikaMock({ getJob: seqGetJob([queuedJob]) });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} maxPolls={2} />);
+    await toVideoReady(user);
+
+    await user.click(screen.getByRole("button", { name: "この内容で送信" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "ジョブの完了を確認できませんでした",
+    );
+    expect(
+      screen.getByRole("status", { name: "送信状態" }),
+    ).not.toHaveTextContent("送信しました");
+  });
+
+  it("成功時は送信状態が成功になる", async () => {
+    installAikaMock({ getJob: seqGetJob([queuedJob, videoSucceededJob]) });
+    const user = userEvent.setup();
+    render(<MediaPanel sleep={instantSleep} />);
+    await toVideoReady(user);
+
+    await user.click(screen.getByRole("button", { name: "この内容で送信" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("status", { name: "送信状態" }),
+      ).toHaveTextContent("送信しました"),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});

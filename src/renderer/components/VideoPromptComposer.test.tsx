@@ -180,21 +180,22 @@ describe("VideoPromptComposer (source 必須検証)", () => {
 describe("VideoPromptComposer (error / retry)", () => {
   it("送信失敗で error 状態になり、alert 表示・retry で再送信できる", async () => {
     // 1回目はジョブ完了で失敗し、2回目は成功する。
-    // completion は呼び出し時に生成する。mock 設定時に Promise.reject を
-    // 作ると、await されるまで未処理のまま残り unhandled rejection になる。
+    // completion は reject しない契約 (PR-G)。失敗も解決値で返すため、
+    // 事前生成した拒否 Promise による unhandled rejection が起きない。
     const onSubmit = acceptingSubmit();
     onSubmit
       .mockImplementationOnce(async () => ({
         status: "accepted",
         jobId: "job-1",
-        completion: (async () => {
-          throw new Error("backend down");
-        })(),
+        completion: Promise.resolve({
+          status: "failed",
+          messageKey: "media.job.failed",
+        }),
       }))
       .mockImplementationOnce(async () => ({
         status: "accepted",
         jobId: "job-2",
-        completion: Promise.resolve(),
+        completion: Promise.resolve({ status: "succeeded" }),
       }));
     const user = userEvent.setup();
     render(<VideoPromptComposer kind="t2v" sourceRequired={false} onSubmit={onSubmit} />);
@@ -204,9 +205,13 @@ describe("VideoPromptComposer (error / retry)", () => {
     await screen.findByLabelText("最終プロンプト案（編集できます）");
     await user.click(screen.getByRole("button", { name: "この内容で送信" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/backend down/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "ジョブが失敗しました",
+    );
     // status にエラー本文は混ぜない
-    expect(screen.getByRole("status", { name: "送信状態" })).not.toHaveTextContent("backend down");
+    expect(
+      screen.getByRole("status", { name: "送信状態" }),
+    ).not.toHaveTextContent("ジョブが失敗しました");
 
     await user.click(screen.getByRole("button", { name: "再試行" }));
     await waitFor(() =>

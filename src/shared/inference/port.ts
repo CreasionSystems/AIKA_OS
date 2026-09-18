@@ -1,3 +1,4 @@
+import type { RouterDiagnostic } from "@shared/media/routerDiagnostic";
 import type { ValidationIssue } from "@shared/media/videoValidation";
 /**
  * InferencePort — 推論基盤への唯一の境界 (Ports & Adapters)。
@@ -68,10 +69,16 @@ export interface ImageJobRequest {
  * 検証失敗は throw ではなくユニオンで返す。IPC を跨ぐと Error の
  * カスタムプロパティは structured clone で失われ、明細が届かないため。
  * 想定外の失敗 (キュー障害など) のみ reject する。
+ *
+ * blocked は「入力は正しいが、いまの実行環境では走らせられない」状態 (PR-G)。
+ * 保留ジョブや確認 API は作らない。ユーザーが提案を適用するか設定を直し、
+ * 通常の送信をやり直すことで承認を表現する。
  */
 export type SubmitVideoJobResult =
   | { status: "accepted"; jobId: string }
-  | { status: "invalid"; issues: readonly ValidationIssue[] };
+  | { status: "invalid"; issues: readonly ValidationIssue[] }
+  /** 診断は空配列にしない。enqueue はしていない。 */
+  | { status: "blocked"; diagnostics: readonly RouterDiagnostic[] };
 
 /**
  * Workflow Router の出力。テンプレート識別子と注入済みの入力。

@@ -61,6 +61,21 @@
     "result": { "kind": "종류: {{kind}}" },
     "artifacts": { "label": "생성물" },
     "history": { "title": "작업 기록", "clear": "기록 지우기" },
+    "diagnostic": {
+      "summary": "이 환경에서는 실행할 수 없습니다",
+      "missingDependency": "필요한 종속 항목을 찾을 수 없습니다",
+      "insufficientVram": "이 설정을 실행하기에 메모리가 부족합니다",
+      "unsupportedConfiguration": "이 구성은 이 환경에서 실행할 수 없습니다",
+      "applySuggested": "경량 설정 적용",
+      "details": "세부 정보: {{detail}}",
+      "status": { "label": "실행 환경 진단", "blocked": "실행할 수 없음" },
+      "turn": {
+        "missingDependency": "필요한 종속 항목이 없어 실행을 중단했습니다.",
+        "insufficientVram": "메모리가 부족하여 실행을 중단했습니다. 경량 설정 후보를 준비했습니다.",
+        "unsupportedConfiguration": "이 구성은 이 환경에서 실행할 수 없어 실행을 중단했습니다."
+      }
+    },
+    "job": { "failed": "작업이 실패했습니다", "incomplete": "작업 완료를 확인하지 못했습니다" },
     "composer": {
       "instruction": {
         "label": "만들고 싶은 동영상 내용",

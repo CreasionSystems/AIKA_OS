@@ -15,6 +15,8 @@ import type { VideoCapabilityProvider } from "@main/workflow/videoCapabilities";
 import { createDummyCapabilityProvider } from "@main/workflow/videoCapabilities";
 import type { WorkflowRouter } from "@main/workflow/workflowRouter";
 import { createDummyWorkflowRouter } from "@main/workflow/workflowRouter";
+import type { WorkflowPreflightPort } from "@main/workflow/workflowPreflight";
+import { createNoopWorkflowPreflight } from "@main/workflow/workflowPreflight";
 import {
   WritingValidationError,
   normalizeWritingRequest,
@@ -30,7 +32,7 @@ import {
 export interface InferenceIpcService {
   generateText(req: WritingRequest): Promise<TextGenerationResult>;
   submitImageJob(req: ImageJobRequest): string;
-  submitVideoJob(req: NormalizedVideoJobRequest): SubmitVideoJobResult;
+  submitVideoJob(req: NormalizedVideoJobRequest): Promise<SubmitVideoJobResult>;
   getJob(id: string): Job | undefined;
 }
 
@@ -52,6 +54,8 @@ export class InferenceService implements InferenceIpcService {
     private readonly capabilities: VideoCapabilityProvider = createDummyCapabilityProvider(),
     /** 実行向けのテンプレート注入。責務が異なるため別インターフェース。 */
     private readonly router: WorkflowRouter = createDummyWorkflowRouter(),
+    /** 実行環境の診断。既定は常に診断なし (PR-G)。 */
+    private readonly preflight: WorkflowPreflightPort = createNoopWorkflowPreflight(),
   ) {}
 
   /** 画像生成ジョブを投入し、キューの jobId を返す。 */
@@ -64,8 +68,13 @@ export class InferenceService implements InferenceIpcService {
    *
    * renderer 由来の入力は信頼せず、受領物から同じ共有純粋関数で再検証する
    * (ADR-001 D6)。検証に失敗した場合はキューに積まず、明細を返す。
+   *
+   * 順序は 再検証 -> route() -> preflight -> enqueue。
+   * 検証に落ちれば Router も Preflight も呼ばず、診断が出れば enqueue しない。
    */
-  submitVideoJob(req: NormalizedVideoJobRequest): SubmitVideoJobResult {
+  async submitVideoJob(
+    req: NormalizedVideoJobRequest,
+  ): Promise<SubmitVideoJobResult> {
     // descriptor 付きで再検証する。renderer が許容外の値を送っても、
     // backend 境界で拒否できるようにする (ADR-001 D6)。
     const capability = this.capabilities.capabilityFor(req.kind);
@@ -91,6 +100,13 @@ export class InferenceService implements InferenceIpcService {
           },
         ],
       };
+    }
+
+    // 実行環境との適合を見る。入力の不正ではないため invalid とは別に返す
+    // (ADR-001 D8)。suggested は提案であり、ここで実行値にはしない。
+    const diagnostics = await this.preflight.diagnose(result.request, routed);
+    if (diagnostics.length > 0) {
+      return { status: "blocked", diagnostics };
     }
 
     const jobId = this.queue.enqueue<VideoJobResult>(() =>

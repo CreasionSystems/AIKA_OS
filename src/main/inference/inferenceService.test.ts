@@ -10,6 +10,8 @@ import type {
   TextGenerationResult,
   VideoJobResult,
 } from "@shared/inference/port";
+import type { RouterDiagnostic } from "@shared/media/routerDiagnostic";
+import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 
 /**
  * InferenceService — InferencePort × JobQueue の結線サービス。
@@ -112,7 +114,7 @@ describe("submitImageJob: 投入 -> 状態遷移 -> 結果取得", () => {
 describe("submitVideoJob", () => {
   it("動画種別を保持したまま succeeded になる", async () => {
     const svc = makeService();
-    const result = svc.submitVideoJob({
+    const result = await svc.submitVideoJob({
       kind: "i2v",
       prompt: "犬",
       params: {
@@ -262,17 +264,17 @@ describe("submitVideoJob: main 側の再検証 (PR-E)", () => {
     assets: [],
   };
 
-  it("正当な要求は accepted で jobId を返す", () => {
+  it("正当な要求は accepted で jobId を返す", async () => {
     const svc = makeService();
-    const result = svc.submitVideoJob(VALID);
+    const result = await svc.submitVideoJob(VALID);
     expect(result.status).toBe("accepted");
     if (result.status !== "accepted") return;
     expect(result.jobId).toBeTruthy();
   });
 
-  it("renderer の結果を信頼せず、不正な要求は invalid を返す", () => {
+  it("renderer の結果を信頼せず、不正な要求は invalid を返す", async () => {
     const svc = makeService();
-    const result = svc.submitVideoJob({
+    const result = await svc.submitVideoJob({
       ...VALID,
       prompt: "   ",
       params: { ...VALID.params, motionStrength: 9 },
@@ -287,17 +289,17 @@ describe("submitVideoJob: main 側の再検証 (PR-E)", () => {
     expect("jobId" in result).toBe(false);
   });
 
-  it("i2v は必須資産が無ければ invalid になる", () => {
+  it("i2v は必須資産が無ければ invalid になる", async () => {
     const svc = makeService();
-    const result = svc.submitVideoJob({ ...VALID, kind: "i2v", assets: [] });
+    const result = await svc.submitVideoJob({ ...VALID, kind: "i2v", assets: [] });
     expect(result.status).toBe("invalid");
     if (result.status !== "invalid") return;
     expect(result.issues.map((i) => i.code)).toContain("asset-count");
   });
 
-  it("表示文言ではなく messageKey を返す", () => {
+  it("表示文言ではなく messageKey を返す", async () => {
     const svc = makeService();
-    const result = svc.submitVideoJob({ ...VALID, prompt: "" });
+    const result = await svc.submitVideoJob({ ...VALID, prompt: "" });
     if (result.status !== "invalid") return;
     for (const issue of result.issues) {
       expect(issue.messageKey.startsWith("media.validation.")).toBe(true);
@@ -355,7 +357,7 @@ describe("submitVideoJob: Router 境界 (PR-F2)", () => {
 
   it("kind / templateId / inputs が adapter 呼び出しまで保持される", async () => {
     const { svc, calls } = makeSpyService();
-    const result = svc.submitVideoJob({
+    const result = await svc.submitVideoJob({
       kind: "audio",
       prompt: "海辺の音に合わせて",
       params: PARAMS,
@@ -387,7 +389,7 @@ describe("submitVideoJob: Router 境界 (PR-F2)", () => {
 
   it("descriptor 違反の要求を main が拒否し、enqueue しない", async () => {
     const { svc, calls } = makeSpyService();
-    const result = svc.submitVideoJob({
+    const result = await svc.submitVideoJob({
       kind: "t2v",
       prompt: "犬",
       // 5秒 x 16fps = 80 frames。Dummy descriptor の 4n+1 を満たさない。
@@ -401,9 +403,9 @@ describe("submitVideoJob: Router 境界 (PR-F2)", () => {
     expect(calls.length).toBe(0);
   });
 
-  it("許容外の fps も main が拒否する (renderer を信頼しない)", () => {
+  it("許容外の fps も main が拒否する (renderer を信頼しない)", async () => {
     const { svc } = makeSpyService();
-    const result = svc.submitVideoJob({
+    const result = await svc.submitVideoJob({
       kind: "t2v",
       prompt: "犬",
       params: { ...PARAMS, fps: 30, durationSec: 3 },
@@ -416,7 +418,7 @@ describe("submitVideoJob: Router 境界 (PR-F2)", () => {
     ).toBe(true);
   });
 
-  it("route() が null なら unsupported-kind を返し enqueue しない", () => {
+  it("route() が null なら unsupported-kind を返し enqueue しない", async () => {
     const port = {
       healthCheck: async () => ({ status: "ok" as const, adapter: "spy", prompt: "" }),
       generateText: async () => { throw new Error("unused"); },
@@ -432,7 +434,7 @@ describe("submitVideoJob: Router 境界 (PR-F2)", () => {
       { route: () => null },
     );
 
-    const result = svc.submitVideoJob({
+    const result = await svc.submitVideoJob({
       kind: "t2v",
       prompt: "犬",
       params: PARAMS,
@@ -442,5 +444,241 @@ describe("submitVideoJob: Router 境界 (PR-F2)", () => {
     if (result.status !== "invalid") return;
     expect(result.issues[0]?.code).toBe("unsupported-kind");
     expect(result.issues[0]?.messageKey).toBe("media.validation.unsupportedKind");
+  });
+});
+
+describe("submitVideoJob: 実行環境の診断 (PR-G)", () => {
+  const PARAMS = {
+    durationSec: 81 / 16,
+    fps: 16,
+    resolution: "480p" as const,
+    qualityPreset: "high" as const,
+    motionStrength: 0.25,
+  };
+  const VALID: NormalizedVideoJobRequest = {
+    kind: "t2v",
+    prompt: "夕暮れの海辺を歩く犬",
+    params: PARAMS,
+    assets: [],
+  };
+
+  const MISSING_DEP: RouterDiagnostic = {
+    kind: "missing-dependency",
+    dependency: "wan2.2-t2v",
+    messageKey: "media.diagnostic.missingDependency",
+  };
+  const LOW_VRAM: RouterDiagnostic = {
+    kind: "insufficient-vram",
+    requested: PARAMS,
+    suggested: { ...PARAMS, resolution: "480p", qualityPreset: "draft" },
+    messageKey: "media.diagnostic.insufficientVram",
+  };
+  const BAD_CONFIG: RouterDiagnostic = {
+    kind: "unsupported-configuration",
+    messageKey: "media.diagnostic.unsupportedConfiguration",
+  };
+
+  /** 診断を返す Preflight と、port / route の呼び出し記録。 */
+  function makeService(diagnostics: readonly RouterDiagnostic[]) {
+    const ran: unknown[] = [];
+    const seen: unknown[] = [];
+    const port = {
+      healthCheck: async () => ({
+        status: "ok" as const,
+        adapter: "spy",
+        prompt: "",
+      }),
+      generateText: async () => {
+        throw new Error("unused");
+      },
+      generateCodePlan: async () => {
+        throw new Error("unused");
+      },
+      runImageJob: async () => {
+        throw new Error("unused");
+      },
+      runVideoJob: async (req: unknown) => {
+        ran.push(req);
+        return {
+          jobId: "backend-1",
+          status: "succeeded" as const,
+          backend: "spy",
+          kind: "t2v" as const,
+          artifacts: ["/abs/out.mp4"],
+        };
+      },
+    };
+    const queue = new JobQueue({ now: makeClock(), idFactory: () => "job-1" });
+    const preflight = {
+      diagnose: async (req: unknown, workflow: unknown) => {
+        seen.push({ req, workflow });
+        return diagnostics;
+      },
+    };
+    return {
+      svc: new InferenceService(
+        port as never,
+        queue,
+        undefined,
+        undefined,
+        preflight,
+      ),
+      ran,
+      seen,
+      queue,
+    };
+  }
+
+  it("診断が無ければ accepted で enqueue される", async () => {
+    const { svc, ran } = makeService([]);
+    const result = await svc.submitVideoJob(VALID);
+    expect(result.status).toBe("accepted");
+    await svc.whenSettled("job-1");
+    expect(ran).toHaveLength(1);
+  });
+
+  it("missing-dependency は blocked になり enqueue しない", async () => {
+    const { svc, ran, queue } = makeService([MISSING_DEP]);
+    const result = await svc.submitVideoJob(VALID);
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") return;
+    expect(result.diagnostics).toEqual([MISSING_DEP]);
+    await nextTick();
+    expect(ran).toHaveLength(0);
+    expect(queue.getJob("job-1")).toBeUndefined();
+  });
+
+  it("insufficient-vram は blocked になり suggested がそのまま返る", async () => {
+    const { svc, ran } = makeService([LOW_VRAM]);
+    const result = await svc.submitVideoJob(VALID);
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") return;
+    const [d] = result.diagnostics;
+    expect(d?.kind).toBe("insufficient-vram");
+    if (d?.kind !== "insufficient-vram") return;
+    expect(d.suggested).toEqual({
+      ...PARAMS,
+      resolution: "480p",
+      qualityPreset: "draft",
+    });
+    await nextTick();
+    expect(ran).toHaveLength(0);
+  });
+
+  it("unsupported-configuration は blocked になり enqueue しない", async () => {
+    const { svc, ran } = makeService([BAD_CONFIG]);
+    const result = await svc.submitVideoJob(VALID);
+    expect(result.status).toBe("blocked");
+    await nextTick();
+    expect(ran).toHaveLength(0);
+  });
+
+  it("複数の診断を順序と内容を保って返す", async () => {
+    const { svc } = makeService([MISSING_DEP, LOW_VRAM, BAD_CONFIG]);
+    const result = await svc.submitVideoJob(VALID);
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") return;
+    expect(result.diagnostics.map((d) => d.kind)).toEqual([
+      "missing-dependency",
+      "insufficient-vram",
+      "unsupported-configuration",
+    ]);
+  });
+
+  it("suggested は実行要求に混入しない", async () => {
+    // 診断を返しつつ通してしまう実装ではないことを、accepted 側で確かめる。
+    const { svc, ran } = makeService([]);
+    await svc.submitVideoJob(VALID);
+    await svc.whenSettled("job-1");
+    expect(ran[0]).toMatchObject({
+      inputs: { resolution: "480p", qualityPreset: "high" },
+    });
+  });
+
+  it("Preflight は正規化済み要求と routed workflow だけを受け取る", async () => {
+    const { svc, seen } = makeService([]);
+    await svc.submitVideoJob(VALID);
+    expect(seen).toHaveLength(1);
+    const call = seen[0] as { req: unknown; workflow: unknown };
+    expect(call.req).toEqual(VALID);
+    expect(call.workflow).toMatchObject({ templateId: "dummy-t2v" });
+    // 会話ログのようなものは渡っていない。
+    expect(Object.keys(call.workflow as object).sort()).toEqual([
+      "inputs",
+      "templateId",
+    ]);
+  });
+
+  it("Preflight が workflow を書き換えようとしても実行要求は汚染されない", async () => {
+    const ran: unknown[] = [];
+    const port = {
+      healthCheck: async () => ({
+        status: "ok" as const,
+        adapter: "spy",
+        prompt: "",
+      }),
+      generateText: async () => {
+        throw new Error("unused");
+      },
+      generateCodePlan: async () => {
+        throw new Error("unused");
+      },
+      runImageJob: async () => {
+        throw new Error("unused");
+      },
+      runVideoJob: async (req: unknown) => {
+        ran.push(req);
+        return {
+          jobId: "backend-1",
+          status: "succeeded" as const,
+          backend: "spy",
+          kind: "t2v" as const,
+          artifacts: [],
+        };
+      },
+    };
+    const queue = new JobQueue({ now: makeClock(), idFactory: () => "job-1" });
+    const svc = new InferenceService(port as never, queue, undefined, undefined, {
+      diagnose: async (_req, workflow) => {
+        // 契約違反の実装でも、Router の出力が汚染されないことを確かめる。
+        // Router 側で凍結してあるため、この代入は黙って捨てられるか throw する。
+        try {
+          (workflow.inputs as Record<string, unknown>).prompt = "汚染";
+        } catch {
+          // strict mode の凍結オブジェクトへの代入。
+        }
+        return [];
+      },
+    });
+    await svc.submitVideoJob(VALID);
+    await svc.whenSettled("job-1");
+    expect(ran[0]).toMatchObject({ inputs: { prompt: VALID.prompt } });
+  });
+
+  it("検証に落ちた要求では Preflight を呼ばない", async () => {
+    const { svc, seen } = makeService([MISSING_DEP]);
+    const result = await svc.submitVideoJob({ ...VALID, prompt: "" });
+    expect(result.status).toBe("invalid");
+    expect(seen).toHaveLength(0);
+  });
+
+  it("route() が null なら Preflight を呼ばない", async () => {
+    const seen: unknown[] = [];
+    const queue = new JobQueue({ now: makeClock(), idFactory: () => "job-1" });
+    const svc = new InferenceService(
+      new DummyInferenceAdapter(),
+      queue,
+      undefined,
+      { route: () => null },
+      {
+        diagnose: async () => {
+          seen.push("called");
+          return [MISSING_DEP];
+        },
+      },
+    );
+    const result = await svc.submitVideoJob(VALID);
+    expect(result.status).toBe("invalid");
+    expect(seen).toHaveLength(0);
   });
 });

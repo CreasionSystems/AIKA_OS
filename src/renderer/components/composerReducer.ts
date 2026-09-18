@@ -22,6 +22,7 @@ import type {
   VideoDraft,
   VideoGenerationParams,
 } from "@shared/media/videoRequest";
+import type { RouterDiagnostic } from "@shared/media/routerDiagnostic";
 import type { ValidationIssue } from "@shared/media/videoValidation";
 import {
   DEFAULT_DURATION_SEC,
@@ -38,7 +39,13 @@ export type RequestId = string;
 export interface ConversationTurn {
   id: string;
   role: "user" | "assistant" | "system";
-  kind: "instruction" | "answer" | "follow-up" | "draft" | "validation";
+  kind:
+    | "instruction"
+    | "answer"
+    | "follow-up"
+    | "draft"
+    | "validation"
+    | "diagnostic";
   /** ユーザー発話はそのまま表示する本文。 */
   text?: string;
   /** アシスタント / システム発話は i18n キーで持つ (6ロケール網羅を保つため)。 */
@@ -92,6 +99,12 @@ export interface ComposerState {
    * 異なるため、同じ配列に入れない。
    */
   validationIssues: readonly ValidationIssue[];
+  /**
+   * 実行環境の診断 (PR-G)。validationIssues とは発生源も消える条件も違う。
+   * validation はフィールドを直せば消えるが、診断は入力を直しただけでは
+   * 解消したか分からないため、次の送信を始めるまで残す。
+   */
+  diagnostics: readonly RouterDiagnostic[];
   sourceInvalid: boolean;
   /** alert に出す本文。ローカル検証の拒否でも使うため operation とは分ける。 */
   errorMessage: string | null;
@@ -133,6 +146,7 @@ export const initialComposerState: ComposerState = {
   summary: "",
   suggestions: [],
   validationIssues: [],
+  diagnostics: [],
   sourceInvalid: false,
   errorMessage: null,
   operation: { status: "idle" },
@@ -188,6 +202,18 @@ export type ComposerAction =
       requestId: RequestId;
       issues: readonly ValidationIssue[];
     }
+  /**
+   * 実行環境の診断で投入が止まった (PR-G)。入力の不正ではないため error に
+   * せず、ready のまま診断を出して修正・再送信できるようにする。
+   */
+  | {
+      type: "send-blocked";
+      requestId: RequestId;
+      at: number;
+      diagnostics: readonly RouterDiagnostic[];
+    }
+  /** 診断の軽量設定提案を draft に反映する。送信も再検証もしない。 */
+  | { type: "diagnostic-suggestion-applied"; params: VideoGenerationParams }
   | { type: "send-accepted"; requestId: RequestId; jobId: string }
   | { type: "send-succeeded"; requestId: RequestId }
   | { type: "send-failed"; requestId: RequestId; message: string }
@@ -203,6 +229,22 @@ export type ComposerAction =
   | { type: "copy-succeeded" }
   | { type: "copy-failed" }
   | { type: "copy-cleared" };
+
+/** 診断の種別ごとの会話本文。識別子や提案値は本文に入れない (ADR-001 D7)。 */
+const DIAGNOSTIC_TURN_KEY: Record<RouterDiagnostic["kind"], string> = {
+  "missing-dependency": "media.diagnostic.turn.missingDependency",
+  "insufficient-vram": "media.diagnostic.turn.insufficientVram",
+  "unsupported-configuration": "media.diagnostic.turn.unsupportedConfiguration",
+};
+
+/** 構造化パラメータに紐づく検証指摘のフィールド。 */
+const PARAM_FIELDS: ReadonlySet<string> = new Set<string>([
+  "durationSec",
+  "fps",
+  "resolution",
+  "qualityPreset",
+  "motionStrength",
+]);
 
 /** 進行中の世代と一致する完了かどうか。 */
 function isCurrent(
@@ -383,6 +425,9 @@ export function composerReducer(
         errorMessage: null,
         sourceInvalid: false,
         validationIssues: [],
+        // 前回の診断はここで消す。以後、成功しても validation で落ちても
+        // 古い診断が残らない。新しい診断は send-blocked が入れ直す。
+        diagnostics: [],
         operation: { status: "validating", requestId: action.requestId },
       };
 
@@ -396,6 +441,45 @@ export function composerReducer(
         validationIssues: action.issues,
         operation: { status: "idle" },
       };
+
+    // 実行環境の診断。error にせず idle に戻し、入力を保持したまま提示する。
+    case "send-blocked": {
+      if (!isCurrent(state.operation, "validating", action.requestId)) {
+        return state;
+      }
+      const blocked: ComposerState = {
+        ...state,
+        diagnostics: action.diagnostics,
+        operation: { status: "idle" },
+      };
+      return action.diagnostics.reduce(
+        (acc, d) =>
+          withTurn(acc, {
+            role: "assistant",
+            kind: "diagnostic",
+            messageKey: DIAGNOSTIC_TURN_KEY[d.kind],
+            createdAt: action.at,
+          }),
+        blocked,
+      );
+    }
+
+    case "diagnostic-suggestion-applied": {
+      // draft だけを書き換える。送信・再検証・enqueue は起こさない
+      // (ADR-001 D8: 承認を経て UI が適用する)。
+      // 診断そのものは残す。解消したかは次の送信でしか分からない。
+      const stale = state.validationIssues.filter(
+        (i) =>
+          i.code !== "frame-constraint" &&
+          i.code !== "unsupported-combination" &&
+          !("field" in i && PARAM_FIELDS.has(i.field)),
+      );
+      return {
+        ...state,
+        draft: { ...state.draft, params: action.params },
+        validationIssues: stale,
+      };
+    }
 
     case "send-accepted":
       if (!isCurrent(state.operation, "validating", action.requestId)) {
@@ -468,6 +552,7 @@ export function composerReducer(
         ...state,
         errorMessage: null,
         validationIssues: [],
+        diagnostics: [],
         operation: { status: "idle" },
       };
 
