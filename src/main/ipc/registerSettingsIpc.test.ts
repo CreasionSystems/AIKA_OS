@@ -372,3 +372,47 @@ describe("saveSettings: 既定値での上書きには明示の復旧が要る",
     expect(serialized).not.toContain("/");
   });
 });
+
+/**
+ * 書込み失敗は既存の failed / saveFailed に収束させる (#33)。
+ * atomic write は Node の例外をそのまま投げるので、パスや code が renderer に
+ * 漏れないことを境界で固定する。
+ */
+describe("saveSettings: 書込み失敗を内部情報なしで返す", () => {
+  function failingWriteStore(code: string) {
+    const base = new FakeSettingsStore({ ...DEFAULT_SETTINGS });
+    return {
+      read: () => base.read(),
+      write: async () => {
+        const err: NodeJS.ErrnoException = new Error(
+          `${code}: operation failed, rename '/Users/secret/Library/Application Support/aika/settings.json.123-abc.tmp' -> '/Users/secret/Library/Application Support/aika/settings.json'`,
+        );
+        err.code = code;
+        throw err;
+      },
+    };
+  }
+
+  it.each(["EACCES", "ENOSPC", "EPERM", "EXDEV", "EIO"])(
+    "%s は failed / saveFailed になり、パスも code も含まない",
+    async (code) => {
+      const { ipcMain, invoke } = makeFakeIpc();
+      registerSettingsIpc(
+        ipcMain,
+        new SettingsService(failingWriteStore(code)),
+      );
+      const res = (await invoke(IPC_CHANNELS.saveSettings, {
+        theme: "dark",
+      })) as Record<string, unknown>;
+
+      expect(res).toEqual({
+        status: "failed",
+        messageKey: "settings.error.saveFailed",
+      });
+      const serialized = JSON.stringify(res);
+      expect(serialized).not.toContain(code);
+      expect(serialized).not.toContain("/Users/secret");
+      expect(serialized).not.toContain(".tmp");
+    },
+  );
+});
