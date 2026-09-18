@@ -125,7 +125,15 @@ describe("createAikaApi: channel への委譲と素通し", () => {
     const api = createAikaApi(invoke);
     await api.saveSettings({ theme: "dark" });
     expect(calls[0]?.channel).toBe(IPC_CHANNELS.saveSettings);
-    expect(calls[0]?.args).toEqual([{ theme: "dark" }]);
+    // preload は素通しのみ。intent の既定値は main 側で決める。
+    expect(calls[0]?.args).toEqual([{ theme: "dark" }, undefined]);
+  });
+
+  it("saveSettings は intent もそのまま委譲する", async () => {
+    const { invoke, calls } = makeInvokeSpy();
+    const api = createAikaApi(invoke);
+    await api.saveSettings({ theme: "dark" }, "restore-defaults");
+    expect(calls[0]?.args).toEqual([{ theme: "dark" }, "restore-defaults"]);
   });
 
   it("checkUpdate は引数なしで内部 channel へ委譲する", async () => {

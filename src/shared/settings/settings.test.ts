@@ -5,6 +5,7 @@ import {
   SettingsValidationError,
   SettingsService,
   SettingsUnavailableError,
+  SettingsRecoveryRequiredError,
   mergeWithDefaults,
   type AppSettings,
 } from "./settings";
@@ -298,9 +299,94 @@ describe("SettingsService.save: 読めない設定の上に書かない", () => 
     expect(writes).toEqual([]);
   });
 
-  it("recovered でも保存自体は成功する (明示操作は UI 側の責務)", async () => {
+  // 保護は UI の文言ではなく service 側で強制する。
+  it("recovered の保存は明示の復旧なしでは通らない", async () => {
     const store = new FakeSettingsStore({ ...DEFAULT_SETTINGS, theme: "neon" });
+    await expect(
+      new SettingsService(store).save({ theme: "dark" }),
+    ).rejects.toBeInstanceOf(SettingsRecoveryRequiredError);
+  });
+});
+
+/**
+ * 既定値での上書き保護 (#32)。
+ *
+ * 保護の本体は service 側。renderer の文言や申告ではなく、保存時に読み直した
+ * 状態で判定する。
+ */
+describe("SettingsService.save: 既定値での上書きには明示の復旧が要る", () => {
+  /** 書込みを記録するストア。 */
+  function recordingStore(initial: Record<string, unknown> | null) {
+    const store = new FakeSettingsStore(initial);
+    const writes: AppSettings[] = [];
+    return {
+      writes,
+      store: {
+        read: () => store.read(),
+        write: async (s: AppSettings) => {
+          writes.push(s);
+          await store.write(s);
+        },
+      },
+    };
+  }
+
+  const BROKEN = { ...DEFAULT_SETTINGS, theme: "neon" };
+
+  it("recovered で intent 省略なら書込まず SettingsRecoveryRequiredError", async () => {
+    const { store, writes } = recordingStore(BROKEN);
+    await expect(
+      new SettingsService(store).save({ theme: "dark" }),
+    ).rejects.toBeInstanceOf(SettingsRecoveryRequiredError);
+    expect(writes).toEqual([]);
+  });
+
+  it('recovered で "normal" を明示しても書込まない', async () => {
+    const { store, writes } = recordingStore(BROKEN);
+    await expect(
+      new SettingsService(store).save({ theme: "dark" }, "normal"),
+    ).rejects.toBeInstanceOf(SettingsRecoveryRequiredError);
+    expect(writes).toEqual([]);
+  });
+
+  it("エラーは既定値へ落ちた項目を持つ", async () => {
+    const { store } = recordingStore(BROKEN);
+    await expect(
+      new SettingsService(store).save({ theme: "dark" }),
+    ).rejects.toMatchObject({ issues: [{ key: "theme", reason: "invalid" }] });
+  });
+
+  it('recovered でも "restore-defaults" なら上書きできる', async () => {
+    const { store, writes } = recordingStore(BROKEN);
+    const saved = await new SettingsService(store).save(
+      { theme: "dark" },
+      "restore-defaults",
+    );
+    expect(saved.theme).toBe("dark");
+    expect(writes).toHaveLength(1);
+  });
+
+  it("ready の保存は従来どおり追加操作なしで成功する", async () => {
+    const { store, writes } = recordingStore({ ...DEFAULT_SETTINGS });
     const saved = await new SettingsService(store).save({ theme: "dark" });
     expect(saved.theme).toBe("dark");
+    expect(writes).toHaveLength(1);
+  });
+
+  it("unavailable は intent に関係なく書込まない", async () => {
+    const base = new FakeSettingsStore(null, "malformed");
+    const writes: AppSettings[] = [];
+    const store = {
+      read: () => base.read(),
+      write: async (s: AppSettings) => {
+        writes.push(s);
+      },
+    };
+    for (const intent of ["normal", "restore-defaults"] as const) {
+      await expect(
+        new SettingsService(store).save({ theme: "dark" }, intent),
+      ).rejects.toBeInstanceOf(SettingsUnavailableError);
+    }
+    expect(writes).toEqual([]);
   });
 });

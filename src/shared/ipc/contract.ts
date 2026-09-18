@@ -17,6 +17,7 @@ import type {
 import type {
   AppSettings,
   LoadSettingsResult,
+  SaveSettingsIntent,
   SettingsViolation,
 } from "@shared/settings/settings";
 
@@ -122,8 +123,15 @@ export interface AikaApi {
   /**
    * 検証失敗は例外ではなく結果ユニオンで返す。generateText と同じ理由で、
    * IPC 越しでは Error の独自プロパティが失われ違反明細が届かないため。
+   *
+   * intent は既定値での上書きを伴う保存だけを区別する。省略時は "normal"。
+   * 既定値で開いている状態で "normal" の保存は、書込みに到達せず failed を返す
+   * (#32)。この判定は main が読み直して行い、renderer の申告は信用しない。
    */
-  saveSettings(patch: Partial<AppSettings>): Promise<SaveSettingsResult>;
+  saveSettings(
+    patch: Partial<AppSettings>,
+    intent?: SaveSettingsIntent,
+  ): Promise<SaveSettingsResult>;
   checkUpdate(): Promise<UpdateState>;
   /** 目標から計画を生成し、コーディングワークフローの状態を返す。 */
   planCode(goal: string): Promise<CodingView>;

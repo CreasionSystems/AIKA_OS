@@ -72,6 +72,7 @@ const REQUIRED_KEYS = [
   "settings.validation.invalidPollInterval",
   "settings.validation.invalidLanguage",
   "settings.error.saveFailed",
+  "settings.error.recoveryRequired",
   "settings.load.unavailable.permission",
   "settings.load.unavailable.notAFile",
   "settings.load.unavailable.malformed",

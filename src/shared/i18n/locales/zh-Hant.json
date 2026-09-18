@@ -31,7 +31,7 @@
       "invalidPollInterval": "媒體更新間隔需為 {{min}} 至 {{max}} 之間的整數。",
       "invalidLanguage": "顯示語言需為 {{allowed}} 其中之一。"
     },
-    "error": { "saveFailed": "無法儲存設定。" },
+    "error": { "saveFailed": "無法儲存設定。" , "recoveryRequired": "設定已以預設值開啟，無法直接儲存。請使用「還原預設值並儲存」。" },
     "load": {
       "unavailable": {
         "permission": "沒有讀取設定檔的權限。",

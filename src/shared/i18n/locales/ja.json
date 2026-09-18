@@ -31,7 +31,7 @@
       "invalidPollInterval": "メディア更新間隔は {{min}}〜{{max}} の整数にしてください。",
       "invalidLanguage": "表示言語は {{allowed}} のいずれかにしてください。"
     },
-    "error": { "saveFailed": "設定を保存できませんでした。" },
+    "error": { "saveFailed": "設定を保存できませんでした。" , "recoveryRequired": "設定が既定値で開かれているため、そのままでは保存できません。「既定値で復旧して保存」を使ってください。" },
     "load": {
       "unavailable": {
         "permission": "設定ファイルを読み取る権限がありません。",

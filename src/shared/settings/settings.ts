@@ -261,6 +261,32 @@ export class SettingsUnavailableError extends Error {
   }
 }
 
+/**
+ * 保存の意図。
+ *
+ * 既定値へ落ちた設定を保存すると、壊れていた元の値は失われる。その上書きを
+ * 意図した保存だけを "restore-defaults" として区別する。曖昧な boolean では
+ * なく意味のある名前にして、呼び出し側で取り違えないようにする。
+ */
+export type SaveSettingsIntent = "normal" | "restore-defaults";
+
+/**
+ * 既定値での上書きになるため、明示的な復旧の意思が要ることを表す内部エラー。
+ * IPC 境界で failed へ変換される。
+ */
+export class SettingsRecoveryRequiredError extends Error {
+  readonly issues: readonly SettingsFallback[];
+  constructor(issues: readonly SettingsFallback[]) {
+    super(
+      `既定値での上書きになるため復旧の明示が必要です: ${issues
+        .map((i) => i.key)
+        .join(", ")}`,
+    );
+    this.name = "SettingsRecoveryRequiredError";
+    this.issues = issues;
+  }
+}
+
 export class SettingsService {
   constructor(private readonly store: SettingsStore) {}
 
@@ -289,8 +315,16 @@ export class SettingsService {
    *
    * 読み取れない設定の上には書かない。読めていない内容を既定値で
    * 上書きしてしまうため、SettingsUnavailableError を投げて中断する。
+   *
+   * 値が壊れていて既定値で開いている場合も、そのまま書くと元の値が失われる。
+   * 復旧の意思が明示されていなければ SettingsRecoveryRequiredError で中断する。
+   *
+   * 状態は必ずここで読み直して判定する。renderer の自己申告は信用しない。
    */
-  async save(patch: Partial<AppSettings>): Promise<AppSettings> {
+  async save(
+    patch: Partial<AppSettings>,
+    intent: SaveSettingsIntent = "normal",
+  ): Promise<AppSettings> {
     const validation = validateSettings(patch);
     if (!validation.ok) {
       throw new SettingsValidationError(validation.violations);
@@ -298,6 +332,9 @@ export class SettingsService {
     const loaded = await this.load();
     if (loaded.status === "unavailable") {
       throw new SettingsUnavailableError(loaded.failure);
+    }
+    if (loaded.status === "recovered" && intent !== "restore-defaults") {
+      throw new SettingsRecoveryRequiredError(loaded.issues);
     }
     const next: AppSettings = { ...loaded.settings, ...patch };
     await this.store.write(next);

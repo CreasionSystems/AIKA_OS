@@ -152,7 +152,12 @@ export function SettingsPanel() {
     setPhase("saving");
     setError(null);
     try {
-      const res = await getAikaApi().saveSettings(settings);
+      // 既定値で開いている間の保存は、元の値を上書きする意思の表明を伴う。
+      // 判定は main が読み直して行う。ここでの申告は補助にすぎない。
+      const res = await getAikaApi().saveSettings(
+        settings,
+        recovered.length > 0 ? "restore-defaults" : "normal",
+      );
       if (res.status === "succeeded") {
         setSettings(res.result);
         setPhase("saved");

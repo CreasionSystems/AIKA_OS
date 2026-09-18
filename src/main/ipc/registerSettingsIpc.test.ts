@@ -67,7 +67,8 @@ describe("registerSettingsIpc", () => {
     const api = createAikaApi(invoke);
 
     await api.saveSettings({ jobHistoryLimit: 5 });
-    expect(spy).toHaveBeenCalledWith({ jobHistoryLimit: 5 });
+    // intent 省略は normal として委譲する。
+    expect(spy).toHaveBeenCalledWith({ jobHistoryLimit: 5 }, "normal");
   });
 });
 
@@ -272,5 +273,102 @@ describe("getSettings: 読み取り失敗を値で返す", () => {
     await expect(
       invoke(IPC_CHANNELS.saveSettings, { theme: "dark" }),
     ).resolves.toMatchObject({ status: "failed" });
+  });
+});
+
+/**
+ * 既定値での上書き保護を IPC 境界で強制する (#32)。
+ *
+ * renderer のボタン文言だけに依存すると、window.aika.saveSettings を直接
+ * 呼ばれた時に無言で上書きできてしまう。判定は main が読み直して行う。
+ */
+describe("saveSettings: 既定値での上書きには明示の復旧が要る", () => {
+  const BROKEN = { ...DEFAULT_SETTINGS, theme: "neon" };
+
+  it("intent なしの直呼びは failed になり、書込まない", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const store = new FakeSettingsStore(BROKEN);
+    registerSettingsIpc(ipcMain, new SettingsService(store));
+
+    const res = (await invoke(IPC_CHANNELS.saveSettings, {
+      theme: "dark",
+    })) as Record<string, unknown>;
+
+    expect(res.status).toBe("failed");
+    expect(res.messageKey).toBe("settings.error.recoveryRequired");
+    // 壊れた値がそのまま残っている (上書きされていない)。
+    const raw = await store.read();
+    expect(raw).toMatchObject({ status: "loaded", raw: { theme: "neon" } });
+  });
+
+  it('"normal" を明示した直呼びも failed になる', async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerSettingsIpc(
+      ipcMain,
+      new SettingsService(new FakeSettingsStore(BROKEN)),
+    );
+    await expect(
+      invoke(IPC_CHANNELS.saveSettings, { theme: "dark" }, "normal"),
+    ).resolves.toMatchObject({
+      status: "failed",
+      messageKey: "settings.error.recoveryRequired",
+    });
+  });
+
+  it("未知の intent 文字列は normal として扱う (昇格させない)", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerSettingsIpc(
+      ipcMain,
+      new SettingsService(new FakeSettingsStore(BROKEN)),
+    );
+    await expect(
+      invoke(IPC_CHANNELS.saveSettings, { theme: "dark" }, "anything-else"),
+    ).resolves.toMatchObject({ status: "failed" });
+  });
+
+  it('"restore-defaults" なら succeeded になり書込まれる', async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    const store = new FakeSettingsStore(BROKEN);
+    registerSettingsIpc(ipcMain, new SettingsService(store));
+
+    await expect(
+      invoke(
+        IPC_CHANNELS.saveSettings,
+        { theme: "dark" },
+        "restore-defaults",
+      ),
+    ).resolves.toMatchObject({ status: "succeeded", result: { theme: "dark" } });
+    expect(await store.read()).toMatchObject({
+      status: "loaded",
+      raw: { theme: "dark" },
+    });
+  });
+
+  it("ready の保存は intent なしで従来どおり成功する", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerSettingsIpc(
+      ipcMain,
+      new SettingsService(new FakeSettingsStore({ ...DEFAULT_SETTINGS })),
+    );
+    await expect(
+      invoke(IPC_CHANNELS.saveSettings, { theme: "dark" }),
+    ).resolves.toMatchObject({ status: "succeeded" });
+  });
+
+  it("failed に内部情報を含まない", async () => {
+    const { ipcMain, invoke } = makeFakeIpc();
+    registerSettingsIpc(
+      ipcMain,
+      new SettingsService(new FakeSettingsStore(BROKEN)),
+    );
+    const res = (await invoke(IPC_CHANNELS.saveSettings, {})) as Record<
+      string,
+      unknown
+    >;
+    expect(Object.keys(res).sort()).toEqual(["messageKey", "status"]);
+    const serialized = JSON.stringify(res);
+    expect(serialized).not.toContain("SettingsRecoveryRequiredError");
+    expect(serialized).not.toContain("aika:settings:");
+    expect(serialized).not.toContain("/");
   });
 });

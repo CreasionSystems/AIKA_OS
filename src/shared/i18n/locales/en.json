@@ -31,7 +31,7 @@
       "invalidPollInterval": "The media poll interval must be an integer between {{min}} and {{max}}.",
       "invalidLanguage": "The display language must be one of {{allowed}}."
     },
-    "error": { "saveFailed": "Could not save the settings." },
+    "error": { "saveFailed": "Could not save the settings." , "recoveryRequired": "The settings were opened with defaults, so they cannot be saved as-is. Use “Restore defaults and save”." },
     "load": {
       "unavailable": {
         "permission": "No permission to read the settings file.",

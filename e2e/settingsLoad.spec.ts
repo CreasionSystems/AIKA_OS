@@ -90,3 +90,31 @@ test("settings(load): 値が壊れていれば既定値で開いたことを示�
 
   await app.close();
 });
+
+test("settings(load): 確認操作前は通常保存できず、確認操作後は保存できる", async () => {
+  // JSON としては読めるが値が不正。既定値で開いた状態になる。
+  const original = JSON.stringify({ theme: "neon", jobHistoryLimit: -5 });
+  const { app, settingsFile } = await launchWithSettings(original);
+  const page = await app.firstWindow();
+
+  await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
+  await expect(
+    page.getByRole("region", { name: "既定値で開いた項目" }),
+  ).toBeVisible({ timeout: 15_000 });
+
+  // UI を経由せず直接呼んでも、明示の復旧なしでは上書きできない。
+  const direct = await page.evaluate(() =>
+    window.aika.saveSettings({ theme: "dark" }),
+  );
+  expect(direct.status).toBe("failed");
+  expect(await readFile(settingsFile, "utf-8")).toBe(original);
+
+  // 明示の復旧操作を経た保存だけが通る。
+  await page.getByRole("button", { name: "既定値で復旧して保存" }).click();
+  await expect(
+    page.getByRole("status", { name: "保存の状態" }),
+  ).toContainText("保存しました", { timeout: 15_000 });
+
+  await app.close();
+  expect(await readFile(settingsFile, "utf-8")).not.toBe(original);
+});

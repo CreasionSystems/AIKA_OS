@@ -31,7 +31,7 @@
       "invalidPollInterval": "미디어 갱신 간격은 {{min}}~{{max}} 사이의 정수여야 합니다.",
       "invalidLanguage": "표시 언어는 {{allowed}} 중 하나여야 합니다."
     },
-    "error": { "saveFailed": "설정을 저장하지 못했습니다." },
+    "error": { "saveFailed": "설정을 저장하지 못했습니다." , "recoveryRequired": "설정이 기본값으로 열려 있어 그대로 저장할 수 없습니다. ‘기본값으로 복구하고 저장’을 사용하세요." },
     "load": {
       "unavailable": {
         "permission": "설정 파일을 읽을 권한이 없습니다.",

@@ -31,7 +31,7 @@
       "invalidPollInterval": "媒体刷新间隔需为 {{min}} 至 {{max}} 之间的整数。",
       "invalidLanguage": "显示语言需为 {{allowed}} 之一。"
     },
-    "error": { "saveFailed": "无法保存设置。" },
+    "error": { "saveFailed": "无法保存设置。" , "recoveryRequired": "设置已以默认值打开，无法直接保存。请使用“恢复默认值并保存”。" },
     "load": {
       "unavailable": {
         "permission": "没有读取设置文件的权限。",

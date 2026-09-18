@@ -94,6 +94,7 @@ describe("SettingsPanel", () => {
     await waitFor(() =>
       expect(saveSettings).toHaveBeenCalledWith(
         expect.objectContaining({ mediaPollIntervalMs: 2000 }),
+        "normal",
       ),
     );
   });
@@ -111,13 +112,16 @@ describe("SettingsPanel", () => {
     await user.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() =>
-      expect(saveSettings).toHaveBeenCalledWith({
-        defaultWritingMode: "general",
-        theme: "dark",
-        jobHistoryLimit: DEFAULT_SETTINGS.jobHistoryLimit,
-        mediaPollIntervalMs: DEFAULT_SETTINGS.mediaPollIntervalMs,
-        language: DEFAULT_SETTINGS.language,
-      }),
+      expect(saveSettings).toHaveBeenCalledWith(
+        {
+          defaultWritingMode: "general",
+          theme: "dark",
+          jobHistoryLimit: DEFAULT_SETTINGS.jobHistoryLimit,
+          mediaPollIntervalMs: DEFAULT_SETTINGS.mediaPollIntervalMs,
+          language: DEFAULT_SETTINGS.language,
+        },
+        "normal",
+      ),
     );
     expect(await screen.findByText("保存しました")).toBeInTheDocument();
   });
@@ -604,5 +608,65 @@ describe("SettingsPanel (読み込み状態)", () => {
     ).toBeInTheDocument();
     // 生の例外本文は出さない。
     expect(screen.queryByText(/aika:settings:/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 復旧の意思を main へ渡す (#32)。
+ * 保護の本体は service 側だが、UI は正しい意図を渡す責任がある。
+ */
+describe("SettingsPanel (復旧保存の意図)", () => {
+  it("通常の保存では restore-defaults を渡さない", async () => {
+    const { saveSettings } = installAikaMock({});
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    expect(saveSettings.mock.calls[0]?.[1]).toBe("normal");
+  });
+
+  it("「既定値で復旧して保存」だけが restore-defaults を渡す", async () => {
+    const { saveSettings } = installAikaMock({
+      getSettings: async () => ({
+        status: "recovered" as const,
+        settings: DEFAULT_SETTINGS,
+        issues: [{ key: "theme" as const, reason: "invalid" as const }],
+      }),
+    });
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "既定値で復旧して保存" }),
+    );
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    expect(saveSettings.mock.calls[0]?.[1]).toBe("restore-defaults");
+  });
+
+  it("main が復旧要求で拒否したら、その案内を表示する", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "recovered" as const,
+        settings: DEFAULT_SETTINGS,
+        issues: [{ key: "theme" as const, reason: "invalid" as const }],
+      }),
+      saveSettings: async () => ({
+        status: "failed" as const,
+        messageKey: "settings.error.recoveryRequired",
+      }),
+    });
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "既定値で復旧して保存" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "「既定値で復旧して保存」を使ってください。",
+    );
   });
 });

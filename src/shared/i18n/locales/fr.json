@@ -31,7 +31,7 @@
       "invalidPollInterval": "L'intervalle de rafraîchissement doit être un entier entre {{min}} et {{max}}.",
       "invalidLanguage": "La langue d'affichage doit être l'une des suivantes : {{allowed}}."
     },
-    "error": { "saveFailed": "Impossible d'enregistrer les réglages." },
+    "error": { "saveFailed": "Impossible d'enregistrer les réglages." , "recoveryRequired": "Les réglages ont été ouverts avec les valeurs par défaut ; ils ne peuvent pas être enregistrés tels quels. Utilisez « Restaurer les valeurs par défaut et enregistrer »." },
     "load": {
       "unavailable": {
         "permission": "Aucune permission de lire le fichier de réglages.",
