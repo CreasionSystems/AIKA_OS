@@ -14,7 +14,10 @@ import type {
   WritingRequest,
   WritingViolation,
 } from "@shared/writing/writingModes";
-import type { AppSettings } from "@shared/settings/settings";
+import type {
+  AppSettings,
+  SettingsViolation,
+} from "@shared/settings/settings";
 
 /**
  * main <-> preload 間の IPC 契約。
@@ -65,6 +68,27 @@ export type GenerateTextResult =
     };
 
 /**
+ * 設定保存の結果。
+ *
+ * GenerateTextResult と同じ理由・同じ3分岐。IPC を跨ぐと Error は
+ * name / message / stack だけの素の Error に作り直され、SettingsValidationError の
+ * violations も instanceof も失われる。明細が越えるのは resolve 経路だけのため、
+ * 例外から値への変換を IPC handler だけで行い、SettingsService.save は throw
+ * 契約のままにする。
+ *
+ * failed は表示用の意味 ID のみを持つ。元の例外本文・stack・channel 名などの
+ * 内部情報は renderer に渡さない。
+ */
+export type SaveSettingsResult =
+  | { status: "succeeded"; result: AppSettings }
+  | { status: "invalid"; issues: readonly SettingsViolation[] }
+  | {
+      status: "failed";
+      messageKey: string;
+      messageParams?: Readonly<Record<string, string | number>>;
+    };
+
+/**
  * renderer に公開する最小 API 面。
  * すべて IPC 越しのため非同期 (Promise) で統一する。
  */
@@ -89,7 +113,11 @@ export interface AikaApi {
   ): Promise<VideoCapabilityDescriptor | null>;
   getJob(id: string): Promise<Job | undefined>;
   getSettings(): Promise<AppSettings>;
-  saveSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
+  /**
+   * 検証失敗は例外ではなく結果ユニオンで返す。generateText と同じ理由で、
+   * IPC 越しでは Error の独自プロパティが失われ違反明細が届かないため。
+   */
+  saveSettings(patch: Partial<AppSettings>): Promise<SaveSettingsResult>;
   checkUpdate(): Promise<UpdateState>;
   /** 目標から計画を生成し、コーディングワークフローの状態を返す。 */
   planCode(goal: string): Promise<CodingView>;

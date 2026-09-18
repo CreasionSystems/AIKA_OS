@@ -2,10 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { getAikaApi } from "@preload/windowApi";
 import { WRITING_MODES } from "@shared/writing/writingModes";
-import {
-  SettingsValidationError,
-  type AppSettings,
-  type ThemeSetting,
+import type {
+  AppSettings,
+  SettingsViolation,
+  ThemeSetting,
 } from "@shared/settings/settings";
 import { LANGUAGE_SETTINGS, type LanguageSetting } from "@shared/i18n/language";
 import type { WritingMode } from "@shared/inference/port";
@@ -17,12 +17,8 @@ type Phase = "loading" | "ready" | "saving" | "saved" | "error";
 const THEME_OPTIONS: ThemeSetting[] = ["light", "dark", "system"];
 const MODE_OPTIONS = Object.values(WRITING_MODES);
 
-function toErrorMessage(err: unknown): string {
-  if (err instanceof SettingsValidationError) {
-    return err.violations.map((v) => v.message).join(" / ");
-  }
-  return err instanceof Error ? err.message : String(err);
-}
+/** 想定外の失敗に使う表示用の意味 ID。内部情報は一切出さない。 */
+const GENERIC_ERROR_KEY = "settings.error.saveFailed";
 
 export function SettingsPanel() {
   const { t } = useTranslation();
@@ -67,17 +63,54 @@ export function SettingsPanel() {
     void applyLanguage(value);
   }
 
+  /**
+   * 違反明細を表示文言にする。ロケール文字列は明細に含まれず、ここで決まる。
+   * モード名と許容値一覧は補間前に翻訳する (明細はコードだけを運ぶ)。
+   */
+  function issueText(issue: SettingsViolation): string {
+    const params: Record<string, string | number> = {
+      ...(issue.messageParams ?? {}),
+    };
+    if (typeof params.mode === "string") {
+      params.mode = t(`writing.mode.option.${params.mode}`);
+    }
+    if (typeof params.allowed === "string") {
+      const prefix =
+        issue.code === "INVALID_THEME"
+          ? "settings.theme.option"
+          : "settings.language.option";
+      params.allowed = params.allowed
+        .split(",")
+        .map((v) => t(`${prefix}.${v}`))
+        .join(" / ");
+    }
+    return t(issue.messageKey, params);
+  }
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (settings === null) return;
     setPhase("saving");
     setError(null);
     try {
-      const saved = await getAikaApi().saveSettings(settings);
-      setSettings(saved);
-      setPhase("saved");
-    } catch (err) {
-      setError(toErrorMessage(err));
+      const res = await getAikaApi().saveSettings(settings);
+      if (res.status === "succeeded") {
+        setSettings(res.result);
+        setPhase("saved");
+        return;
+      }
+      if (res.status === "invalid") {
+        // 入力は保持したまま明細を出す。フォームは残るので直して再保存できる。
+        setError(res.issues.map(issueText).join(" / "));
+        setPhase("error");
+        return;
+      }
+      setError(t(res.messageKey, res.messageParams ?? {}));
+      setPhase("error");
+    } catch {
+      // IPC 自体の失敗 (プロセス断など) は依然 reject しうる。
+      // 生の err.message は channel 名を含むため表示しない。
+      setError(t(GENERIC_ERROR_KEY));
       setPhase("error");
     }
   }

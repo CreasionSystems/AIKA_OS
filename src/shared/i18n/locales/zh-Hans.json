@@ -23,7 +23,15 @@
       "option": { "system": "跟随系统设置", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "保存" },
-    "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "已保存" }
+    "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "已保存" },
+    "validation": {
+      "invalidWritingMode": "未知的写作模式：“{{mode}}”",
+      "invalidTheme": "主题需为 {{allowed}} 之一。",
+      "invalidJobHistoryLimit": "任务历史上限需为 1 或更大的整数。",
+      "invalidPollInterval": "媒体刷新间隔需为 {{min}} 至 {{max}} 之间的整数。",
+      "invalidLanguage": "显示语言需为 {{allowed}} 之一。"
+    },
+    "error": { "saveFailed": "无法保存设置。" }
   },
   "media": {
     "validation": { "unsupportedKind": "没有与该类型对应的模板", "summary": "输入存在问题", "missingPrompt": "请输入内容", "forbiddenPrompt": "该类型无法指定内容", "missingParameter": "存在未填写的项目", "invalidDuration": "时长请填写正数", "invalidFps": "fps 请填写正整数", "invalidMotionStrength": "运动强度需在 0.0〜1.0 之间", "invalidResolution": "分辨率指定无效", "invalidQualityPreset": "质量指定无效", "fpsNotAllowed": "无法使用该 fps", "durationNotAllowed": "无法使用该时长", "resolutionNotSupported": "无法使用该分辨率", "qualityNotSupported": "无法使用该质量", "unsupportedCombination": "无法组合该分辨率与质量", "frameConstraint": "无法组合该时长与 fps", "frameNotInteger": "时长 × fps 无法得到整数帧", "invalidAsset": "文件路径无效", "assetCount": "所需文件不齐全" },

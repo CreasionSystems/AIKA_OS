@@ -24,7 +24,10 @@ function installAikaMock() {
     submitVideoJob: vi.fn(),
     getJob: vi.fn(),
     getSettings: vi.fn(async () => DEFAULT_SETTINGS),
-    saveSettings: vi.fn(async (patch) => ({ ...DEFAULT_SETTINGS, ...patch })),
+    saveSettings: vi.fn(async (patch) => ({
+      status: "succeeded",
+      result: { ...DEFAULT_SETTINGS, ...patch },
+    })),
     listJobs: vi.fn(async () => []),
     clearJobs: vi.fn(async () => {}),
   } as unknown as AikaApi;
