@@ -28,6 +28,7 @@ import type {
 } from "@shared/media/videoRequest";
 import { normalizeVideoJobRequest } from "@shared/media/videoValidation";
 import type { ValidationIssue } from "@shared/media/videoValidation";
+import type { RouterDiagnostic } from "@shared/media/routerDiagnostic";
 
 /**
  * 動画プロンプトの対話型コンポーザ。
@@ -50,12 +51,29 @@ import type { ValidationIssue } from "@shared/media/videoValidation";
  * compositionstart-end の ref / keyCode===229 の3層でガードする。
  */
 /**
+ * 受理後のジョブ完了結果 (PR-G)。
+ *
+ * 失敗を reject ではなく解決値で表す。reject にすると、生成のタイミング次第で
+ * unhandled rejection になりうる (PR-E で実際に CI を落とした)。本文は t() 前の
+ * i18n キーで返し、6ロケール網羅の外に文言が漏れないようにする。
+ */
+export type CompletionResult =
+  | { status: "succeeded" }
+  | {
+      status: "failed";
+      messageKey: string;
+      messageParams?: Readonly<Record<string, string | number>>;
+    };
+
+/**
  * 送信の結果 (ADR-001 D9)。検証失敗は例外ではなくユニオンで返す。
  * accepted の completion はジョブ完了を表し、sending 状態の区間を作る。
+ * blocked は入力の不正ではなく実行環境との不適合 (ADR-001 D8)。
  */
 export type ComposerSubmitOutcome =
-  | { status: "accepted"; jobId: string; completion: Promise<void> }
-  | { status: "invalid"; issues: readonly ValidationIssue[] };
+  | { status: "accepted"; jobId: string; completion: Promise<CompletionResult> }
+  | { status: "invalid"; issues: readonly ValidationIssue[] }
+  | { status: "blocked"; diagnostics: readonly RouterDiagnostic[] };
 
 export interface VideoPromptComposerProps {
   /** 動画種別。必要な資産入力の出し分けに使う。 */
@@ -112,6 +130,7 @@ export function VideoPromptComposer({
   const draft = state.draft.prompt;
   const suggestions = state.suggestions;
   const validationIssues = state.validationIssues;
+  const diagnostics = state.diagnostics;
 
   /** 指定 field に紐づく検証指摘 (無ければ undefined)。 */
   const issueFor = (field: string): ValidationIssue | undefined =>
@@ -343,8 +362,26 @@ export function VideoPromptComposer({
         });
         return;
       }
+      if (outcome.status === "blocked") {
+        dispatch({
+          type: "send-blocked",
+          requestId,
+          at: Date.now(),
+          diagnostics: outcome.diagnostics,
+        });
+        return;
+      }
       dispatch({ type: "send-accepted", requestId, jobId: outcome.jobId });
-      await outcome.completion;
+      // completion は reject しない契約。失敗も解決値で届く。
+      const completion = await outcome.completion;
+      if (completion.status === "failed") {
+        dispatch({
+          type: "send-failed",
+          requestId,
+          message: t(completion.messageKey, completion.messageParams ?? {}),
+        });
+        return;
+      }
       dispatch({ type: "send-succeeded", requestId });
     } catch (err) {
       dispatch({
@@ -393,6 +430,17 @@ export function VideoPromptComposer({
         aria-label={t("media.composer.status.copyLabel")}
       >
         {copyState === "copied" ? t("media.composer.status.copied") : ""}
+      </p>
+
+      {/* 実行環境の診断。短い要約だけをここに置き、詳細と提案値は下の通常領域へ。
+          入力エラーでも処理失敗でもないため alert にはしない (ADR-001 D8)。 */}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t("media.diagnostic.status.label")}
+      >
+        {diagnostics.length > 0 ? t("media.diagnostic.status.blocked") : ""}
       </p>
 
       {/* 会話ログ。末尾への追加のみ読み上げる。見た目のチャット化はしない。 */}
@@ -746,6 +794,58 @@ export function VideoPromptComposer({
       {/* 検証の失敗は form-level に要約1件だけ出す。明細は各入力欄に置く。 */}
       {validationIssues.length > 0 && (
         <p role="alert">{t("media.validation.summary")}</p>
+      )}
+
+      {/* 実行環境の診断の詳細。説明的な本文のため live region には入れない。
+          提案は候補であり、明示操作でのみ draft に入る (ADR-001 D1 / D8)。 */}
+      {diagnostics.length > 0 && (
+        <section aria-label={t("media.diagnostic.summary")}>
+          <h3>{t("media.diagnostic.summary")}</h3>
+          <ul>
+            {diagnostics.map((d, index) => (
+              <li key={`${d.kind}-${index}`}>
+                <span>{t(d.messageKey)}</span>
+                {d.kind === "missing-dependency" && (
+                  <>
+                    {/* 表示名があればそれを主表示にする。無い場合も本文
+                        (messageKey) だけで意味が通るようにしてある。 */}
+                    {d.dependencyLabelKey !== undefined && (
+                      <span>{t(d.dependencyLabelKey)}</span>
+                    )}
+                    {/* 技術識別子は詳細としてのみ添える。 */}
+                    <span>
+                      {t("media.diagnostic.details", { detail: d.dependency })}
+                    </span>
+                  </>
+                )}
+                {d.kind === "insufficient-vram" && (
+                  <>
+                    <span>
+                      {t("media.composer.params.resolution")}:{" "}
+                      {d.suggested.resolution}
+                      {" / "}
+                      {t("media.composer.params.qualityPreset")}:{" "}
+                      {t(`media.composer.quality.${d.suggested.qualityPreset}`)}
+                      {" / "}
+                      {t("media.composer.params.fps")}: {d.suggested.fps}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatch({
+                          type: "diagnostic-suggestion-applied",
+                          params: d.suggested,
+                        })
+                      }
+                    >
+                      {t("media.diagnostic.applySuggested")}
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/* frame 制約の修正候補。自動適用はせず、明示操作でのみ draft を変える。 */}

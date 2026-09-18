@@ -13,6 +13,7 @@ import type { PromptRefinementPort } from "@shared/media/promptRefinement";
 import {
   VideoPromptComposer,
   type ComposerSubmitOutcome,
+  type CompletionResult,
 } from "./VideoPromptComposer";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
@@ -212,8 +213,10 @@ export function MediaPanel({
 
   /**
    * 動画ジョブ投入 (コンポーザからの送信ハンドラ)。
-   * 成功で解決、失敗 (投入失敗 or ジョブ失敗) で reject し、コンポーザ側で
-   * error 状態 / retry を扱えるようにする。
+   *
+   * 検証失敗 (invalid) と実行環境の診断 (blocked) は明細として返し、
+   * コンポーザが入力を保持したまま表示する。受理後のジョブ完了は completion
+   * として返し、成否とも reject せず解決値で伝える (PR-G)。
    */
   async function runVideoJob(
     req: NormalizedVideoJobRequest,
@@ -226,18 +229,41 @@ export function MediaPanel({
       if (mounted.current) setPhase("idle");
       return { status: "invalid", issues: result.issues };
     }
-    const id = result.jobId;
-    if (!mounted.current) return { status: "accepted", jobId: id, completion: Promise.resolve() };
-    setJobId(id);
-    setPhase("polling");
-    // 受理後のジョブ完了は別の Promise として返し、コンポーザが sending を出せるようにする。
-    const completion = (async () => {
-      const final = await poll(id);
+    if (result.status === "blocked") {
+      // 入力は正しいが、この環境では実行できない。ジョブは積まれていない。
       if (mounted.current) setPhase("idle");
-      await refreshHistory();
-      if (final?.state === "failed") {
-        throw new Error(final.error ?? "failed");
+      return { status: "blocked", diagnostics: result.diagnostics };
+    }
+    const id = result.jobId;
+    if (mounted.current) {
+      setJobId(id);
+      setPhase("polling");
+    }
+    // 受理後のジョブ完了は別の Promise として返し、コンポーザが sending を出せるようにする。
+    // unmount しても完了結果を作り替えない。抑制するのは state 更新だけ。
+    const completion = (async (): Promise<CompletionResult> => {
+      let final: Job | null = null;
+      let threw = false;
+      try {
+        final = await poll(id);
+      } catch {
+        threw = true;
       }
+      if (mounted.current) setPhase("idle");
+      try {
+        await refreshHistory();
+      } catch {
+        // 履歴の取り直しに失敗しても、ジョブ自体の成否は変わらない。
+      }
+      if (threw || final?.state === "failed") {
+        return { status: "failed", messageKey: "media.job.failed" };
+      }
+      if (final?.state !== "succeeded") {
+        // ポーリング上限や unmount で決着を見届けられなかった場合。
+        // 完了していないものを成功として返さない。
+        return { status: "failed", messageKey: "media.job.incomplete" };
+      }
+      return { status: "succeeded" };
     })();
     return { status: "accepted", jobId: id, completion };
   }

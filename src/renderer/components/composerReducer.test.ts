@@ -7,6 +7,7 @@ import {
   type ComposerState,
 } from "./composerReducer";
 import type { RefineResult } from "@shared/media/promptRefinement";
+import type { RouterDiagnostic } from "@shared/media/routerDiagnostic";
 
 /**
  * コンポーザ状態モデルの契約テスト (ADR-001 D5 / D7)。
@@ -572,5 +573,180 @@ describe("旧 phase との対応", () => {
     expect(derivePhase(sending)).toBe("sending");
     expect(derivePhase(success)).toBe("success");
     expect(derivePhase(error)).toBe("error");
+  });
+});
+
+describe("実行環境の診断 (PR-G)", () => {
+  const DEP: RouterDiagnostic = {
+    kind: "missing-dependency",
+    dependency: "wan2.2-t2v",
+    messageKey: "media.diagnostic.missingDependency",
+  };
+  const SUGGESTED = {
+    durationSec: 5,
+    fps: 16,
+    resolution: "480p" as const,
+    qualityPreset: "draft" as const,
+    motionStrength: 0.5,
+  };
+  const VRAM: RouterDiagnostic = {
+    kind: "insufficient-vram",
+    requested: {
+      durationSec: 5,
+      fps: 16,
+      resolution: "720p",
+      qualityPreset: "standard",
+      motionStrength: 0.5,
+    },
+    suggested: SUGGESTED,
+    messageKey: "media.diagnostic.insufficientVram",
+  };
+
+  /** ready から送信要求を出し、validating 中の状態にする。 */
+  function validating(requestId = "s1"): ComposerState {
+    const ready = composerReducer(refining(), {
+      type: "refinement-succeeded",
+      requestId: "r1",
+      at: 2,
+      result: READY,
+    });
+    return composerReducer(ready, { type: "send-requested", requestId });
+  }
+
+  it("blocked は error にせず idle に戻し、診断を保持する", () => {
+    const s = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [DEP],
+    });
+    expect(s.operation).toEqual({ status: "idle" });
+    expect(s.diagnostics).toEqual([DEP]);
+    // ドラフト提示済みなので ready のまま (再送信できる)。
+    expect(derivePhase(s)).toBe("ready");
+  });
+
+  it("診断ごとに assistant ターンを1件ずつ足す", () => {
+    const s = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [DEP, VRAM],
+    });
+    const added = s.turns.filter((t) => t.kind === "diagnostic");
+    expect(added).toHaveLength(2);
+    expect(added.map((t) => t.messageKey)).toEqual([
+      "media.diagnostic.turn.missingDependency",
+      "media.diagnostic.turn.insufficientVram",
+    ]);
+    // 識別子や提案値は会話本文に出さない (ADR-001 D7)。
+    expect(added.every((t) => t.values === undefined)).toBe(true);
+  });
+
+  it("世代が一致しない blocked は捨てる", () => {
+    const s = validating("s1");
+    expect(
+      composerReducer(s, {
+        type: "send-blocked",
+        requestId: "stale",
+        at: 3,
+        diagnostics: [DEP],
+      }),
+    ).toBe(s);
+  });
+
+  it("次の送信を始めると前回の診断が消える", () => {
+    const blocked = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [DEP],
+    });
+    const again = composerReducer(blocked, {
+      type: "send-requested",
+      requestId: "s2",
+    });
+    expect(again.diagnostics).toEqual([]);
+  });
+
+  it("フィールド編集では診断が消えない", () => {
+    const blocked = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [DEP],
+    });
+    const edited = composerReducer(blocked, {
+      type: "param-changed",
+      key: "durationSec",
+      value: 3,
+    });
+    expect(edited.diagnostics).toEqual([DEP]);
+  });
+
+  it("提案の適用は draft だけを変え、診断も操作状態も変えない", () => {
+    const blocked = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [VRAM],
+    });
+    const applied = composerReducer(blocked, {
+      type: "diagnostic-suggestion-applied",
+      params: SUGGESTED,
+    });
+    expect(applied.draft.params).toMatchObject({
+      resolution: "480p",
+      qualityPreset: "draft",
+    });
+    expect(applied.diagnostics).toEqual([VRAM]);
+    expect(applied.operation).toEqual({ status: "idle" });
+    // 会話ログは増えない (送信も起きていない)。
+    expect(applied.turns).toHaveLength(blocked.turns.length);
+  });
+
+  it("提案の適用でパラメータ由来の検証指摘は古くなるので落とす", () => {
+    const blocked = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [VRAM],
+    });
+    const withIssues: ComposerState = {
+      ...blocked,
+      validationIssues: [
+        {
+          code: "invalid-parameter",
+          field: "resolution",
+          value: "1080p",
+          messageKey: "media.validation.resolutionNotSupported",
+        },
+        {
+          code: "missing-prompt",
+          field: "prompt",
+          messageKey: "media.validation.missingPrompt",
+        },
+      ],
+    };
+    const applied = composerReducer(withIssues, {
+      type: "diagnostic-suggestion-applied",
+      params: SUGGESTED,
+    });
+    // パラメータ由来は消え、prompt の指摘は残る。
+    expect(applied.validationIssues.map((i) => i.code)).toEqual([
+      "missing-prompt",
+    ]);
+  });
+
+  it("書き直すと診断も消える", () => {
+    const blocked = composerReducer(validating(), {
+      type: "send-blocked",
+      requestId: "s1",
+      at: 3,
+      diagnostics: [DEP],
+    });
+    expect(
+      composerReducer(blocked, { type: "redo-requested" }).diagnostics,
+    ).toEqual([]);
   });
 });

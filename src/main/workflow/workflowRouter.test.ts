@@ -140,3 +140,24 @@ describe("値を書き換えない", () => {
     expect(router.route(req)).toEqual(router.route(req));
   });
 });
+
+describe("出力の不変性 (PR-G)", () => {
+  const router = createDummyWorkflowRouter();
+
+  it("inputs は凍結され、下流から書き換えられない", () => {
+    const routed = router.route(request());
+    expect(Object.isFrozen(routed?.inputs)).toBe(true);
+    expect(() => {
+      (routed?.inputs as Record<string, unknown>).prompt = "汚染";
+    }).toThrow();
+    expect(routed?.inputs.prompt).toBe("夕暮れの海辺を歩く犬");
+  });
+
+  it("templateId も差し替えられない", () => {
+    const routed = router.route(request());
+    expect(Object.isFrozen(routed)).toBe(true);
+    expect(() => {
+      (routed as { templateId: string }).templateId = "other";
+    }).toThrow();
+  });
+});

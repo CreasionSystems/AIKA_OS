@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import type { RouterDiagnostic } from "@shared/media/routerDiagnostic";
 import type { ComposerSubmitOutcome } from "./VideoPromptComposer";
 
 /**
@@ -11,7 +12,7 @@ export function acceptingSubmit(jobId = "job-1") {
     async (): Promise<ComposerSubmitOutcome> => ({
       status: "accepted",
       jobId,
-      completion: Promise.resolve(),
+      completion: Promise.resolve({ status: "succeeded" }),
     }),
   );
 }
@@ -19,17 +20,25 @@ export function acceptingSubmit(jobId = "job-1") {
 /**
  * ジョブ完了で失敗する onSubmit。
  *
- * completion は呼び出し時に生成する。mock 設定時に作ると、await されるまで
- * 未処理のまま残り unhandled rejection として検出される。
+ * completion は reject しない契約 (PR-G)。失敗も解決値で返すため、mock 設定時に
+ * 生成しても未処理の拒否にならない。本文は i18n キーで渡す。
  */
-export function failingSubmit(message: string, jobId = "job-1") {
+export function failingSubmit(messageKey: string, jobId = "job-1") {
   return vi.fn(
     async (): Promise<ComposerSubmitOutcome> => ({
       status: "accepted",
       jobId,
-      completion: (async () => {
-        throw new Error(message);
-      })(),
+      completion: Promise.resolve({ status: "failed", messageKey }),
+    }),
+  );
+}
+
+/** 実行環境の診断で投入が止まる onSubmit。 */
+export function blockedSubmit(diagnostics: readonly RouterDiagnostic[]) {
+  return vi.fn(
+    async (): Promise<ComposerSubmitOutcome> => ({
+      status: "blocked",
+      diagnostics,
     }),
   );
 }

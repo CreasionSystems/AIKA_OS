@@ -207,11 +207,30 @@ a11y は既存方針を維持する。会話本文は `role="log"`、進捗・�
 - **VRAM 不足は validation error ではない**。入力値の不正ではなく実行環境との適合問題のため、`RouterDiagnostic` として別の型にする
 - Router は `suggested` を返せるが、composer の draft を勝手に書き換えない
 
+> **PR-G 追記。** 診断を生成するのは Router ではなく、実行環境を問い合わせる別ポート `WorkflowPreflightPort` とする。依存モデルの有無や VRAM の照会は副作用を伴い、Router の「純粋で決定的なテンプレート選択」という性質と両立しないため（D2 と同じ理由でインターフェースを統合しない）。呼び出し位置は `route()` の後・enqueue の前で、1件でも診断が出たら投入しない。
+>
+> Preflight が受け取ってよいのは正規化済み要求と routed workflow だけで、会話ログ・renderer の内部状態・IPC チャンネル名は渡さない。Router の出力は実行時にも凍結し、`inputs` の `Readonly` を型だけの約束で終わらせない。
+>
+> 本番の既定実装は**常に診断なし**とする。実測に基づかない VRAM 閾値を Dummy に入れると架空の実行制約が仕様になるため。実際の依存判定と VRAM 見積もりは ComfyUI 接続時に追加し、それまで診断の分岐はテストで差し替えた実装によって網羅する。
+>
+> 承認フローは「ユーザーが提案を適用し、通常の送信をやり直す」で表現する。main に保留ジョブや確認 API を持たせない（期限・破棄・再起動時の扱いという新しい状態管理を生むため）。
+
 ### D9. IPC
 
 `submitVideoJob(req: NormalizedVideoJobRequest)` へ移行し、型でも「正規化済み要求だけを送る」ことを表現する。ただし型だけで安全性を保証せず、Main 側で再検証する。
 
 Router 診断を返すための戻り値拡張 (`SubmitVideoJobResult`) は**別スコープ**。41-3 の必須変更は入力の構造化と正規化済み要求の受け渡しまで。
+
+> **PR-G 追記。** その拡張をここで確定する。`SubmitVideoJobResult` に `{ status: "blocked"; diagnostics }` を1つだけ足す。`invalid` と `blocked` の線引きは次のとおり。
+>
+> | 分類 | 判定対象 |
+> |---|---|
+> | `invalid` | 要求そのものが descriptor の値域・構造に反する（非対応の解像度、許容外 fps、フレーム数規則違反など） |
+> | `blocked` / `unsupported-configuration` | 正規化済みだが、選ばれた workflow・backend・環境の組み合わせで実行できない |
+> | `blocked` / `missing-dependency` | 実行に必要なモデル・ノード・ファイルが存在しない |
+> | `blocked` / `insufficient-vram` | 値は有効だが、現在の VRAM では実行できない |
+>
+> あわせて、受理後の完了結果 (`ComposerSubmitOutcome.completion`) は**失敗でも reject しない**契約に変える。ジョブの成否は解決値 (`CompletionResult`) で伝え、本文は t() 前の i18n キーで返す。reject 契約は生成タイミング次第で unhandled rejection になりうるうえ、「完了を見届けられなかったものを成功として解決する」抜け道を許していた。ポーリング上限や unmount で決着を確認できない場合は、成功として扱わない。
 
 ## 結果・制約
 

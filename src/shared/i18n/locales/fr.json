@@ -61,6 +61,21 @@
     "result": { "kind": "Type : {{kind}}" },
     "artifacts": { "label": "Artefacts" },
     "history": { "title": "Historique des tâches", "clear": "Effacer l'historique" },
+    "diagnostic": {
+      "summary": "Exécution impossible dans cet environnement",
+      "missingDependency": "Une dépendance requise est introuvable",
+      "insufficientVram": "Mémoire insuffisante pour ces réglages",
+      "unsupportedConfiguration": "Cette configuration ne peut pas s'exécuter dans cet environnement",
+      "applySuggested": "Appliquer les réglages allégés",
+      "details": "Détails : {{detail}}",
+      "status": { "label": "Diagnostic de l'environnement", "blocked": "Exécution impossible" },
+      "turn": {
+        "missingDependency": "Arrêté car une dépendance requise est introuvable.",
+        "insufficientVram": "Arrêté par manque de mémoire. Des réglages allégés sont proposés.",
+        "unsupportedConfiguration": "Arrêté car cette configuration ne peut pas s'exécuter dans cet environnement."
+      }
+    },
+    "job": { "failed": "La tâche a échoué", "incomplete": "Impossible de confirmer la fin de la tâche" },
     "composer": {
       "instruction": {
         "label": "Quelle vidéo voulez-vous créer ?",

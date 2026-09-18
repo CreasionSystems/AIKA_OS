@@ -61,6 +61,21 @@
     "result": { "kind": "Type: {{kind}}" },
     "artifacts": { "label": "Artifacts" },
     "history": { "title": "Job history", "clear": "Clear history" },
+    "diagnostic": {
+      "summary": "Cannot run in this environment",
+      "missingDependency": "A required dependency is missing",
+      "insufficientVram": "Not enough memory to run these settings",
+      "unsupportedConfiguration": "This configuration cannot run in this environment",
+      "applySuggested": "Apply lighter settings",
+      "details": "Details: {{detail}}",
+      "status": { "label": "Environment diagnostics", "blocked": "Cannot run" },
+      "turn": {
+        "missingDependency": "Stopped because a required dependency is missing.",
+        "insufficientVram": "Stopped because memory is insufficient. Lighter settings are suggested.",
+        "unsupportedConfiguration": "Stopped because this configuration cannot run in this environment."
+      }
+    },
+    "job": { "failed": "The job failed", "incomplete": "Could not confirm that the job finished" },
     "composer": {
       "instruction": {
         "label": "What video do you want to make?",

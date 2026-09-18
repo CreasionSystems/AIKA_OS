@@ -31,9 +31,11 @@ export function createDummyWorkflowRouter(): WorkflowRouter {
     route(req: NormalizedVideoJobRequest): RoutedWorkflow | null {
       const descriptor = descriptorFor(req.kind);
       if (descriptor === null) return null;
-      return {
+      // 出力は凍結する。inputs の Readonly は型だけの約束で、実行時には
+      // 下流 (Preflight など) が書き換えられてしまうため (PR-G)。
+      return Object.freeze({
         templateId: descriptor.templateId,
-        inputs: {
+        inputs: Object.freeze({
           prompt: req.prompt,
           durationSec: req.params.durationSec,
           fps: req.params.fps,
@@ -42,8 +44,8 @@ export function createDummyWorkflowRouter(): WorkflowRouter {
           motionStrength: req.params.motionStrength,
           // image 以外 (video / audio) も落とさずすべて渡す。
           assets: req.assets,
-        },
-      };
+        }),
+      });
     },
   };
 }
