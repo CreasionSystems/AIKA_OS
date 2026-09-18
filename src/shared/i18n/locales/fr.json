@@ -23,7 +23,7 @@
       "option": { "system": "Suivre le réglage du système", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "Enregistrer" },
-    "status": { "unsaved": "Non enregistré", "saving": "Enregistrement…", "saved": "Enregistré" },
+    "status": { "unsaved": "Non enregistré", "saving": "Enregistrement…", "saved": "Enregistré", "label": "État de l'enregistrement" },
     "validation": {
       "invalidWritingMode": "Mode de rédaction inconnu : « {{mode}} »",
       "invalidTheme": "Le thème doit être l'un des suivants : {{allowed}}.",
@@ -31,7 +31,19 @@
       "invalidPollInterval": "L'intervalle de rafraîchissement doit être un entier entre {{min}} et {{max}}.",
       "invalidLanguage": "La langue d'affichage doit être l'une des suivantes : {{allowed}}."
     },
-    "error": { "saveFailed": "Impossible d'enregistrer les réglages." }
+    "error": { "saveFailed": "Impossible d'enregistrer les réglages." },
+    "load": {
+      "unavailable": {
+        "permission": "Aucune permission de lire le fichier de réglages.",
+        "notAFile": "Un dossier occupe l'emplacement du fichier de réglages.",
+        "malformed": "Le fichier de réglages est corrompu.",
+        "io": "Impossible de lire le fichier de réglages."
+      },
+      "status": { "label": "État du chargement des réglages", "unavailable": "Chargement impossible", "recovered": "Ouvert avec les valeurs par défaut" },
+      "recovered": { "title": "Éléments ouverts avec les valeurs par défaut", "applyDefaults": "Restaurer les valeurs par défaut et enregistrer" },
+      "fallback": { "invalid": "{{item}} était corrompu ; la valeur par défaut est utilisée." },
+      "retry": "Recharger"
+    }
   },
   "media": {
     "validation": { "unsupportedKind": "Aucun modèle n'est disponible pour ce type", "summary": "L'entrée comporte un problème", "missingPrompt": "Saisissez le contenu", "forbiddenPrompt": "Le contenu ne peut pas être défini pour ce type", "missingParameter": "Certains champs sont vides", "invalidDuration": "La durée doit être un nombre positif", "invalidFps": "Le fps doit être un entier positif", "invalidMotionStrength": "L'intensité du mouvement doit être comprise entre 0,0 et 1,0", "invalidResolution": "Résolution invalide", "invalidQualityPreset": "Qualité invalide", "fpsNotAllowed": "Ce fps n'est pas disponible", "durationNotAllowed": "Cette durée n'est pas disponible", "resolutionNotSupported": "Cette résolution n'est pas disponible", "qualityNotSupported": "Cette qualité n'est pas disponible", "unsupportedCombination": "Cette résolution et cette qualité ne peuvent pas être combinées", "frameConstraint": "Cette durée et ce fps ne peuvent pas être combinés", "frameNotInteger": "Durée x fps ne donne pas un nombre entier d'images", "invalidAsset": "Chemin de fichier invalide", "assetCount": "Des fichiers requis sont manquants" },

@@ -23,7 +23,10 @@ function installAikaMock() {
     submitImageJob: vi.fn(),
     submitVideoJob: vi.fn(),
     getJob: vi.fn(),
-    getSettings: vi.fn(async () => DEFAULT_SETTINGS),
+    getSettings: vi.fn(async () => ({
+      status: "ready",
+      settings: DEFAULT_SETTINGS,
+    })),
     saveSettings: vi.fn(async (patch) => ({
       status: "succeeded",
       result: { ...DEFAULT_SETTINGS, ...patch },
@@ -65,7 +68,9 @@ describe("SettingsPanel 言語選択", () => {
     );
     expect(screen.getByLabelText("Theme")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Not saved");
+    expect(
+      screen.getByRole("status", { name: "Save state" }),
+    ).toHaveTextContent("Not saved");
   });
 });
 

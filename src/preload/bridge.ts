@@ -13,7 +13,10 @@ import type {
 import type { VideoCapabilityDescriptor } from "@shared/media/videoCapability";
 import type { NormalizedVideoJobRequest } from "@shared/media/videoRequest";
 import type { WritingRequest } from "@shared/writing/writingModes";
-import type { AppSettings } from "@shared/settings/settings";
+import type {
+  AppSettings,
+  LoadSettingsResult,
+} from "@shared/settings/settings";
 import type { UpdateState } from "@main/update/updateManager";
 import type { CodingView } from "@main/coding/codingWorkflow";
 import type { JobHistoryEntry } from "@shared/jobs/jobHistory";
@@ -59,7 +62,7 @@ export function createAikaApi(invoke: IpcInvoke): AikaApi {
     getJob: (id: string) =>
       invoke(IPC_CHANNELS.getJob, id) as Promise<Job | undefined>,
     getSettings: () =>
-      invoke(IPC_CHANNELS.getSettings) as Promise<AppSettings>,
+      invoke(IPC_CHANNELS.getSettings) as Promise<LoadSettingsResult>,
     saveSettings: (patch: Partial<AppSettings>) =>
       invoke(IPC_CHANNELS.saveSettings, patch) as Promise<SaveSettingsResult>,
     checkUpdate: () =>

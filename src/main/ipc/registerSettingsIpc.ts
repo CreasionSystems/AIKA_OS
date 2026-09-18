@@ -1,7 +1,10 @@
 import { IPC_CHANNELS } from "@shared/ipc/contract";
 import type { SaveSettingsResult } from "@shared/ipc/contract";
 import type { IpcMainLike } from "./registerInferenceIpc";
-import type { AppSettings } from "@shared/settings/settings";
+import type {
+  AppSettings,
+  LoadSettingsResult,
+} from "@shared/settings/settings";
 import { SettingsValidationError } from "@shared/settings/settings";
 
 /**
@@ -10,7 +13,7 @@ import { SettingsValidationError } from "@shared/settings/settings";
 
 /** SettingsService が満たす最小インターフェース。 */
 export interface SettingsIpcService {
-  load(): Promise<AppSettings>;
+  load(): Promise<LoadSettingsResult>;
   save(patch: Partial<AppSettings>): Promise<AppSettings>;
 }
 

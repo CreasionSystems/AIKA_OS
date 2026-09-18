@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsPanel } from "./SettingsPanel";
 import {
@@ -16,7 +22,10 @@ function installAikaMock(over: {
   getSettings?: AikaApi["getSettings"];
   saveSettings?: AikaApi["saveSettings"];
 }) {
-  const getSettings = vi.fn(over.getSettings ?? (async () => DEFAULT_SETTINGS));
+  const getSettings = vi.fn(
+    over.getSettings ??
+      (async () => ({ status: "ready" as const, settings: DEFAULT_SETTINGS })),
+  );
   const saveSettings = vi.fn(
     over.saveSettings ??
       (async (patch: Partial<AppSettings>) => ({
@@ -47,11 +56,14 @@ describe("SettingsPanel", () => {
   it("マウント時に現在の設定を読み込んで表示する", async () => {
     installAikaMock({
       getSettings: async () => ({
-        defaultWritingMode: "novel",
-        theme: "dark",
-        jobHistoryLimit: 30,
-        mediaPollIntervalMs: 1000,
-        language: "system",
+        status: "ready" as const,
+        settings: {
+          defaultWritingMode: "novel" as const,
+          theme: "dark" as const,
+          jobHistoryLimit: 30,
+          mediaPollIntervalMs: 1000,
+          language: "system" as const,
+        },
       }),
     });
     render(<SettingsPanel />);
@@ -144,7 +156,7 @@ describe("SettingsPanel (状態サマリー live region)", () => {
     await waitFor(() =>
       expect(screen.getByLabelText("テーマ")).toHaveValue("system"),
     );
-    const status = screen.getByRole("status");
+    const status = screen.getByRole("status", { name: "保存の状態" });
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(status).toHaveAttribute("aria-atomic", "true");
     expect(status).toHaveTextContent("未保存");
@@ -160,7 +172,9 @@ describe("SettingsPanel (状態サマリー live region)", () => {
 
     await user.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("保存しました"),
+      expect(
+        screen.getByRole("status", { name: "保存の状態" }),
+      ).toHaveTextContent("保存しました"),
     );
   });
 
@@ -188,9 +202,9 @@ describe("SettingsPanel (状態サマリー live region)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "テーマは ライト / ダーク / システム のいずれかにしてください。",
     );
-    expect(screen.getByRole("status")).not.toHaveTextContent(
-      "テーマは ライト",
-    );
+    expect(
+      screen.getByRole("status", { name: "保存の状態" }),
+    ).not.toHaveTextContent("テーマは ライト");
   });
 });
 
@@ -384,9 +398,211 @@ describe("SettingsPanel (保存失敗の結果ユニオン)", () => {
     expect(screen.getByRole("button", { name: "保存" })).toBeEnabled();
     // alert は1つだけで、status に本文を混ぜない。
     expect(screen.getAllByRole("alert")).toHaveLength(1);
-    expect(screen.getByRole("status")).not.toHaveTextContent("ジョブ履歴");
+    expect(
+      screen.getByRole("status", { name: "保存の状態" }),
+    ).not.toHaveTextContent("ジョブ履歴");
 
     await user.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(saveSettings).toHaveBeenCalledTimes(2));
+  });
+});
+
+/**
+ * 読み込み状態の分岐 (#31 / #32)。
+ *
+ * 読めないときはフォームを出さない (上書きを誘発するため)。
+ * 既定値で開いたときは何が置き換わったかを示し、保存のラベルで明示する。
+ */
+describe("SettingsPanel (読み込み状態)", () => {
+  it("unavailable ではフォームを出さず、理由と再読み込みを示す", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "unavailable" as const,
+        failure: "permission" as const,
+      }),
+    });
+    render(<SettingsPanel />);
+
+    expect(
+      await screen.findByText("設定ファイルを読み取る権限がありません。"),
+    ).toBeInTheDocument();
+    // 読めていない内容の上に新しい値を書く操作を提示しない。
+    expect(screen.queryByLabelText("テーマ")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "保存" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "再読み込み" }),
+    ).toBeInTheDocument();
+  });
+
+  it("unavailable の理由ごとに文言が変わる", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "unavailable" as const,
+        failure: "malformed" as const,
+      }),
+    });
+    render(<SettingsPanel />);
+    expect(
+      await screen.findByText("設定ファイルの内容が壊れています。"),
+    ).toBeInTheDocument();
+  });
+
+  it("unavailable は alert にせず、短い要約のみ status に出す", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "unavailable" as const,
+        failure: "io" as const,
+      }),
+    });
+    render(<SettingsPanel />);
+
+    await screen.findByRole("button", { name: "再読み込み" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const status = screen.getByRole("status", { name: "設定の読み込み状態" });
+    expect(status).toHaveTextContent("読み込めません");
+    // 説明本文は live region に入れない。
+    expect(status).not.toHaveTextContent("設定ファイルを読み取れませんでした");
+  });
+
+  it("再読み込みで getSettings を呼び直し、回復すればフォームが出る", async () => {
+    let attempt = 0;
+    const { getSettings } = installAikaMock({
+      getSettings: async () => {
+        attempt += 1;
+        return attempt === 1
+          ? ({ status: "unavailable", failure: "io" } as const)
+          : ({ status: "ready", settings: DEFAULT_SETTINGS } as const);
+      },
+    });
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "再読み込み" }));
+
+    expect(await screen.findByLabelText("テーマ")).toBeInTheDocument();
+    expect(getSettings).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovered では置き換わった項目を示し、保存ラベルを明示にする", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "recovered" as const,
+        settings: DEFAULT_SETTINGS,
+        issues: [
+          { key: "theme" as const, reason: "invalid" as const },
+          { key: "jobHistoryLimit" as const, reason: "invalid" as const },
+        ],
+      }),
+    });
+    render(<SettingsPanel />);
+
+    const section = await screen.findByRole("region", {
+      name: "既定値で開いた項目",
+    });
+    expect(
+      within(section).getByText(
+        "テーマ の値が壊れていたため、既定値で開いています。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByText(
+        "ジョブ履歴の上限 の値が壊れていたため、既定値で開いています。",
+      ),
+    ).toBeInTheDocument();
+
+    // 通常の「保存」ではなく、上書きになることが分かるラベルにする。
+    expect(
+      screen.queryByRole("button", { name: "保存" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "既定値で復旧して保存" }),
+    ).toBeInTheDocument();
+  });
+
+  it("recovered でもフォームは出し、入力できる", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "recovered" as const,
+        settings: DEFAULT_SETTINGS,
+        issues: [{ key: "theme" as const, reason: "invalid" as const }],
+      }),
+    });
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+
+    await user.selectOptions(await screen.findByLabelText("テーマ"), "dark");
+    expect(screen.getByLabelText("テーマ")).toHaveValue("dark");
+  });
+
+  it("recovered は alert にせず、短い要約のみ status に出す", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "recovered" as const,
+        settings: DEFAULT_SETTINGS,
+        issues: [{ key: "theme" as const, reason: "invalid" as const }],
+      }),
+    });
+    render(<SettingsPanel />);
+
+    await screen.findByRole("region", { name: "既定値で開いた項目" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const status = screen.getByRole("status", { name: "設定の読み込み状態" });
+    expect(status).toHaveTextContent("既定値で開いています");
+    expect(status).not.toHaveTextContent("値が壊れていた");
+  });
+
+  it("ready では読み込みの要約も復旧 UI も出さない", async () => {
+    installAikaMock({});
+    render(<SettingsPanel />);
+
+    await screen.findByLabelText("テーマ");
+    // live region は初回から存在し、内容だけが空。
+    expect(
+      screen.getByRole("status", { name: "設定の読み込み状態" }),
+    ).toHaveTextContent("");
+    expect(
+      screen.queryByRole("region", { name: "既定値で開いた項目" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+  });
+
+  it("復旧保存が成功すると復旧の提示が下がる", async () => {
+    installAikaMock({
+      getSettings: async () => ({
+        status: "recovered" as const,
+        settings: DEFAULT_SETTINGS,
+        issues: [{ key: "theme" as const, reason: "invalid" as const }],
+      }),
+    });
+    const user = userEvent.setup();
+    render(<SettingsPanel />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "既定値で復旧して保存" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "保存" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "既定値で開いた項目" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("getSettings が reject しても画面を空白のまま固めない", async () => {
+    installAikaMock({
+      getSettings: async () => {
+        throw new Error("Error invoking remote method 'aika:settings:get': x");
+      },
+    });
+    render(<SettingsPanel />);
+
+    expect(
+      await screen.findByRole("button", { name: "再読み込み" }),
+    ).toBeInTheDocument();
+    // 生の例外本文は出さない。
+    expect(screen.queryByText(/aika:settings:/)).not.toBeInTheDocument();
   });
 });

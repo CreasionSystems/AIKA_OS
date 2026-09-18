@@ -21,7 +21,10 @@ function installAikaMock() {
     submitVideoJob: vi.fn(),
     getVideoCapability: vi.fn(async () => null),
     getJob: vi.fn(),
-    getSettings: vi.fn(async () => DEFAULT_SETTINGS),
+    getSettings: vi.fn(async () => ({
+      status: "ready",
+      settings: DEFAULT_SETTINGS,
+    })),
     saveSettings: vi.fn(),
     checkUpdate: vi.fn(),
     planCode: vi.fn(),

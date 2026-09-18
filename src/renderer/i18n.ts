@@ -40,8 +40,14 @@ export function applyLanguage(
 
 /** 起動時に設定から言語を読み込んで反映する。 */
 export async function initLanguageFromSettings(): Promise<void> {
-  const settings = await getAikaApi().getSettings();
-  if (settings) await applyLanguage(settings.language);
+  try {
+    const res = await getAikaApi().getSettings();
+    // 設定を読めなければ既定ロケールのまま続行する。翻訳資源は内蔵しており
+    // 初期化済みなので、この場合もローカライズ表示自体は成立する。
+    if (res.status !== "unavailable") await applyLanguage(res.settings.language);
+  } catch {
+    // 起動を止めない。
+  }
 }
 
 export default i18n;

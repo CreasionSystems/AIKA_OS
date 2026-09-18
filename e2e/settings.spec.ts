@@ -28,8 +28,13 @@ test("settings: getSettings -> saveSettings -> getSettings 往復", async () => 
   );
   expect(saved?.theme).toBe("dark");
 
-  const reloaded = await page.evaluate(() => window.aika.getSettings());
-  expect(reloaded.theme).toBe("dark");
+  // 戻り値は結果ユニオンのため、読み込めたことを確かめてから設定を取る。
+  const reloaded = await page.evaluate(() =>
+    window.aika
+      .getSettings()
+      .then((r) => (r.status === "unavailable" ? null : r.settings)),
+  );
+  expect(reloaded?.theme).toBe("dark");
 
   await app.close();
 });
@@ -67,7 +72,10 @@ test("settings: 数値欄を空にして保存 -> ローカライズ済みの入
   await expect(alert).not.toContainText("SettingsValidationError");
 
   // 短い状態サマリーにエラー本文を混ぜない (a11y 契約)。
-  await expect(page.getByRole("status")).not.toContainText("ジョブ履歴の上限は");
+  // 読み込み状態の region が増えたため、保存状態を名前で特定する。
+  await expect(
+    page.getByRole("status", { name: "保存の状態" }),
+  ).not.toContainText("ジョブ履歴の上限は");
 
   await app.close();
 });

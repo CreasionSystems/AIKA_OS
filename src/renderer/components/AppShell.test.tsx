@@ -31,7 +31,10 @@ function installAikaMock() {
     submitImageJob: vi.fn(),
     submitVideoJob: vi.fn(),
     getJob: vi.fn(),
-    getSettings: vi.fn(async () => DEFAULT_SETTINGS),
+    getSettings: vi.fn(async () => ({
+      status: "ready",
+      settings: DEFAULT_SETTINGS,
+    })),
     saveSettings: vi.fn(async (patch) => ({
       status: "succeeded",
       result: { ...DEFAULT_SETTINGS, ...patch },

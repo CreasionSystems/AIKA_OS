@@ -37,7 +37,8 @@ function installAikaMock(over: {
   );
   const getJob = vi.fn(over.getJob ?? (async () => undefined));
   const getSettings = vi.fn(
-    over.getSettings ?? (async () => DEFAULT_SETTINGS),
+    over.getSettings ??
+      (async () => ({ status: "ready" as const, settings: DEFAULT_SETTINGS })),
   );
   const listJobs = vi.fn(over.listJobs ?? (async () => []));
   const clearJobs = vi.fn(over.clearJobs ?? (async () => {}));
@@ -267,8 +268,8 @@ describe("MediaPanel (ポーリング間隔の設定連携)", () => {
     installAikaMock({
       getJob: seqGetJob([queuedJob, succeededJob]),
       getSettings: async () => ({
-        ...DEFAULT_SETTINGS,
-        mediaPollIntervalMs: 250,
+        status: "ready" as const,
+        settings: { ...DEFAULT_SETTINGS, mediaPollIntervalMs: 250 },
       }),
     });
     const slept: number[] = [];
@@ -291,8 +292,8 @@ describe("MediaPanel (ポーリング間隔の設定連携)", () => {
     installAikaMock({
       getJob: seqGetJob([queuedJob, succeededJob]),
       getSettings: async () => ({
-        ...DEFAULT_SETTINGS,
-        mediaPollIntervalMs: 250,
+        status: "ready" as const,
+        settings: { ...DEFAULT_SETTINGS, mediaPollIntervalMs: 250 },
       }),
     });
     const slept: number[] = [];
