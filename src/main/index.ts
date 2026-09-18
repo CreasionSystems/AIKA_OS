@@ -13,7 +13,7 @@ import { InferenceService } from "./inference/inferenceService";
 import { DummyInferenceAdapter } from "./inference/dummyInferenceAdapter";
 import { JobQueue, type Job } from "./jobs/jobQueue";
 import { CodingWorkflow } from "./coding/codingWorkflow";
-import { SettingsService } from "@shared/settings/settings";
+import { DEFAULT_SETTINGS, SettingsService } from "@shared/settings/settings";
 import { FileSettingsStore } from "./settings/fileSettingsStore";
 import { JobHistory } from "@shared/jobs/jobHistory";
 import { FileJobHistoryStore } from "./jobs/fileJobHistoryStore";
@@ -66,7 +66,12 @@ function createMainWindow(): BrowserWindow {
 
 app.whenReady().then(async () => {
   const settingsService = buildSettingsService();
-  const settings = await settingsService.load();
+  // 設定を読めないことは、アプリを起動しない理由にならない (#31)。
+  // 以前はここで例外が未処理の reject になり createMainWindow() へ到達せず、
+  // ウィンドウが一度も開かないまま固まっていた。
+  const loaded = await settingsService.load();
+  const settings =
+    loaded.status === "unavailable" ? DEFAULT_SETTINGS : loaded.settings;
 
   // ジョブ履歴 (File 永続化, jobHistoryLimit に従う FIFO)。
   // ストアを差し替えれば Memory 運用にも切替できる。

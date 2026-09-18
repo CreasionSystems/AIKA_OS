@@ -1,5 +1,11 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { FileSettingsStore } from "./fileSettingsStore";
@@ -24,16 +30,86 @@ afterEach(() => {
 });
 
 describe("FileSettingsStore", () => {
-  it("未作成ファイルの read は null", async () => {
+  it("未作成ファイルの read は missing (初回起動)", async () => {
     const store = new FileSettingsStore(tmpFile());
-    expect(await store.read()).toBeNull();
+    expect(await store.read()).toEqual({ status: "missing" });
   });
 
   it("write した内容を read で取り出せる", async () => {
     const file = tmpFile();
     const store = new FileSettingsStore(file);
     await store.write({ ...DEFAULT_SETTINGS, theme: "dark" });
-    const read = await store.read();
-    expect(read).toMatchObject({ theme: "dark" });
+    expect(await store.read()).toMatchObject({
+      status: "loaded",
+      raw: { theme: "dark" },
+    });
+  });
+});
+
+/**
+ * 読み取り失敗の分類 (#31)。
+ *
+ * 「読めない」を例外で伝えると、main の起動処理で未処理の reject になり
+ * ウィンドウが開かなくなる。値として分類して返す。
+ */
+describe("FileSettingsStore: 読み取り失敗の分類", () => {
+  it("権限がなければ permission", async () => {
+    const file = tmpFile();
+    writeFileSync(file, JSON.stringify(DEFAULT_SETTINGS), "utf-8");
+    chmodSync(file, 0o000);
+    const res = await new FileSettingsStore(file).read();
+    chmodSync(file, 0o644); // afterEach で削除できるよう戻す
+    expect(res).toEqual({ status: "unreadable", failure: "permission" });
+  });
+
+  it("ディレクトリなら not-a-file", async () => {
+    const file = tmpFile();
+    mkdirSync(file);
+    expect(await new FileSettingsStore(file).read()).toEqual({
+      status: "unreadable",
+      failure: "not-a-file",
+    });
+  });
+
+  it("JSON 構文エラーは malformed", async () => {
+    const file = tmpFile();
+    writeFileSync(file, '{ "theme": "dark", ', "utf-8");
+    expect(await new FileSettingsStore(file).read()).toEqual({
+      status: "unreadable",
+      failure: "malformed",
+    });
+  });
+
+  it("空ファイルは malformed", async () => {
+    const file = tmpFile();
+    writeFileSync(file, "", "utf-8");
+    expect(await new FileSettingsStore(file).read()).toEqual({
+      status: "unreadable",
+      failure: "malformed",
+    });
+  });
+
+  // 以前は配列が typeof "object" を通り、全項目が既定値へ落ちたうえで
+  // 次回保存時に元ファイルを上書きしていた (#32)。
+  it("配列は malformed (設定オブジェクトではない)", async () => {
+    const file = tmpFile();
+    writeFileSync(file, "[1,2,3]", "utf-8");
+    expect(await new FileSettingsStore(file).read()).toEqual({
+      status: "unreadable",
+      failure: "malformed",
+    });
+  });
+
+  it.each([
+    ['"just a string"', "文字列"],
+    ["42", "数値"],
+    ["null", "null"],
+  ])("%s (%s) は malformed", async (body) => {
+    const file = tmpFile();
+    writeFileSync(file, body, "utf-8");
+    expect(await new FileSettingsStore(file).read()).toEqual({
+      status: "unreadable",
+      failure: "malformed",
+    });
   });
 });

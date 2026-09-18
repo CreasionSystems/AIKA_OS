@@ -23,7 +23,7 @@
       "option": { "system": "시스템 설정 따르기", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "저장" },
-    "status": { "unsaved": "저장 안 됨", "saving": "저장 중…", "saved": "저장됨" },
+    "status": { "unsaved": "저장 안 됨", "saving": "저장 중…", "saved": "저장됨", "label": "저장 상태" },
     "validation": {
       "invalidWritingMode": "알 수 없는 글쓰기 모드입니다: \"{{mode}}\"",
       "invalidTheme": "테마는 {{allowed}} 중 하나여야 합니다.",
@@ -31,7 +31,19 @@
       "invalidPollInterval": "미디어 갱신 간격은 {{min}}~{{max}} 사이의 정수여야 합니다.",
       "invalidLanguage": "표시 언어는 {{allowed}} 중 하나여야 합니다."
     },
-    "error": { "saveFailed": "설정을 저장하지 못했습니다." }
+    "error": { "saveFailed": "설정을 저장하지 못했습니다." , "recoveryRequired": "설정이 기본값으로 열려 있어 그대로 저장할 수 없습니다. ‘기본값으로 복구하고 저장’을 사용하세요." },
+    "load": {
+      "unavailable": {
+        "permission": "설정 파일을 읽을 권한이 없습니다.",
+        "notAFile": "설정 파일 위치에 폴더가 있습니다.",
+        "malformed": "설정 파일의 내용이 손상되었습니다.",
+        "io": "설정 파일을 읽지 못했습니다."
+      },
+      "status": { "label": "설정 불러오기 상태", "unavailable": "불러올 수 없음", "recovered": "기본값으로 열림" },
+      "recovered": { "title": "기본값으로 연 항목", "applyDefaults": "기본값으로 복구하고 저장" },
+      "fallback": { "invalid": "{{item}} 값이 손상되어 기본값으로 열었습니다." },
+      "retry": "다시 불러오기"
+    }
   },
   "media": {
     "validation": { "unsupportedKind": "이 종류에 대응하는 템플릿이 없습니다", "summary": "입력에 문제가 있습니다", "missingPrompt": "내용을 입력하세요", "forbiddenPrompt": "이 종류에서는 내용을 지정할 수 없습니다", "missingParameter": "입력되지 않은 항목이 있습니다", "invalidDuration": "길이는 양수로 지정하세요", "invalidFps": "fps는 양의 정수로 지정하세요", "invalidMotionStrength": "모션 강도는 0.0~1.0 사이여야 합니다", "invalidResolution": "해상도 지정이 올바르지 않습니다", "invalidQualityPreset": "품질 지정이 올바르지 않습니다", "fpsNotAllowed": "이 fps는 사용할 수 없습니다", "durationNotAllowed": "이 길이는 사용할 수 없습니다", "resolutionNotSupported": "이 해상도는 사용할 수 없습니다", "qualityNotSupported": "이 품질은 사용할 수 없습니다", "unsupportedCombination": "해상도와 품질의 조합을 사용할 수 없습니다", "frameConstraint": "길이와 fps의 조합을 사용할 수 없습니다", "frameNotInteger": "길이 × fps가 정수 프레임이 되지 않습니다", "invalidAsset": "파일 경로가 올바르지 않습니다", "assetCount": "필요한 파일이 갖춰지지 않았습니다" },

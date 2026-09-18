@@ -4,7 +4,10 @@ import { getAikaApi } from "@preload/windowApi";
 import { WRITING_MODES } from "@shared/writing/writingModes";
 import type {
   AppSettings,
+  LoadSettingsResult,
+  SettingsFallback,
   SettingsViolation,
+  SettingsReadFailure,
   ThemeSetting,
 } from "@shared/settings/settings";
 import { LANGUAGE_SETTINGS, type LanguageSetting } from "@shared/i18n/language";
@@ -20,32 +23,84 @@ const MODE_OPTIONS = Object.values(WRITING_MODES);
 /** 想定外の失敗に使う表示用の意味 ID。内部情報は一切出さない。 */
 const GENERIC_ERROR_KEY = "settings.error.saveFailed";
 
+/** 読み取り失敗の理由ごとの説明文。内部情報は出さない。 */
+const FAILURE_KEY: Record<SettingsReadFailure, string> = {
+  permission: "settings.load.unavailable.permission",
+  "not-a-file": "settings.load.unavailable.notAFile",
+  malformed: "settings.load.unavailable.malformed",
+  io: "settings.load.unavailable.io",
+};
+
+/** 設定項目のラベル。フォールバック明細の本文を組み立てるのに使う。 */
+const ITEM_LABEL_KEY: Record<keyof AppSettings, string> = {
+  defaultWritingMode: "settings.writingMode.label",
+  theme: "settings.theme.label",
+  jobHistoryLimit: "settings.jobHistoryLimit.label",
+  mediaPollIntervalMs: "settings.pollInterval.label",
+  language: "settings.language.label",
+};
+
 export function SettingsPanel() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
+  /**
+   * 読み込みの結果。保存の状態機械 (Phase) とは発生源も消える条件も違うため
+   * 混ぜない (validationIssues と diagnostics を分けたのと同じ理由)。
+   */
+  const [load, setLoad] = useState<LoadSettingsResult | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
     void getAikaApi()
       .getSettings()
-      .then((s) => {
-        if (active) {
-          setSettings(s);
+      .then((res) => {
+        if (!active) return;
+        setLoad(res);
+        if (res.status !== "unavailable") {
+          setSettings(res.settings);
           setPhase("ready");
         }
+      })
+      .catch(() => {
+        // IPC 自体の失敗。画面を空白のまま固めない。
+        if (active) setLoad({ status: "unavailable", failure: "io" });
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   /** live region 用の短い状態サマリー。 */
   function summarize(): string {
     if (phase === "saving") return t("settings.status.saving");
     if (phase === "saved") return t("settings.status.saved");
     return t("settings.status.unsaved");
+  }
+
+  /** 読み取れない設定の上にフォームを出さない。上書きを誘発するため。 */
+  if (load !== null && load.status === "unavailable") {
+    return (
+      <section>
+        <h1>{t("settings.title")}</h1>
+        {/* 短い要約のみ live region。入力エラーでも処理失敗でもないため
+            role="alert" にはしない。 */}
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label={t("settings.load.status.label")}
+        >
+          {t("settings.load.status.unavailable")}
+        </p>
+        <p>{t(FAILURE_KEY[load.failure])}</p>
+        <button type="button" onClick={() => setReloadKey((n) => n + 1)}>
+          {t("settings.load.retry")}
+        </button>
+      </section>
+    );
   }
 
   if (settings === null) {
@@ -87,16 +142,27 @@ export function SettingsPanel() {
     return t(issue.messageKey, params);
   }
 
+  /** 既定値へ落とされた項目 (読めたが値が壊れていたもの)。 */
+  const recovered: readonly SettingsFallback[] =
+    load !== null && load.status === "recovered" ? load.issues : [];
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (settings === null) return;
     setPhase("saving");
     setError(null);
     try {
-      const res = await getAikaApi().saveSettings(settings);
+      // 既定値で開いている間の保存は、元の値を上書きする意思の表明を伴う。
+      // 判定は main が読み直して行う。ここでの申告は補助にすぎない。
+      const res = await getAikaApi().saveSettings(
+        settings,
+        recovered.length > 0 ? "restore-defaults" : "normal",
+      );
       if (res.status === "succeeded") {
         setSettings(res.result);
         setPhase("saved");
+        // 書き込めた時点で永続値は健全になったので、復旧の提示を下げる。
+        setLoad({ status: "ready", settings: res.result });
         return;
       }
       if (res.status === "invalid") {
@@ -118,6 +184,34 @@ export function SettingsPanel() {
   return (
     <section>
       <h1>{t("settings.title")}</h1>
+
+      {/* 読み込み状態の短い要約。初回レンダリングから存在させ、送信状態とは
+          aria-label で一意化する。入力エラーではないので alert にしない。 */}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t("settings.load.status.label")}
+      >
+        {recovered.length > 0 ? t("settings.load.status.recovered") : ""}
+      </p>
+
+      {/* 既定値へ落とした項目の明細。説明的な本文のため live region の外。 */}
+      {recovered.length > 0 && (
+        <section aria-label={t("settings.load.recovered.title")}>
+          <h2>{t("settings.load.recovered.title")}</h2>
+          <ul>
+            {recovered.map((f) => (
+              <li key={f.key}>
+                {t("settings.load.fallback.invalid", {
+                  item: t(ITEM_LABEL_KEY[f.key]),
+                })}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <form onSubmit={onSubmit}>
         <label htmlFor="settings-language">{t("settings.language.label")}</label>
         <select
@@ -182,13 +276,23 @@ export function SettingsPanel() {
           }
         />
 
+        {/* 既定値で開いている間は、保存が既存内容を置き換えることを
+            ラベルで明示する (ADR-001 D8: 補正は承認可能な形で示す)。 */}
         <button type="submit" disabled={phase === "saving"}>
-          {t("settings.action.save")}
+          {recovered.length > 0
+            ? t("settings.load.recovered.applyDefaults")
+            : t("settings.action.save")}
         </button>
       </form>
 
-      {/* 短い状態サマリーのみ live region に置く。 */}
-      <p role="status" aria-live="polite" aria-atomic="true">
+      {/* 短い状態サマリーのみ live region に置く。読み込み状態の region と
+          混ざらないよう aria-label で一意化する。 */}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t("settings.status.label")}
+      >
         {summarize()}
       </p>
 

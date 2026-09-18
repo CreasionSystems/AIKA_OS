@@ -16,6 +16,8 @@ import type {
 } from "@shared/writing/writingModes";
 import type {
   AppSettings,
+  LoadSettingsResult,
+  SaveSettingsIntent,
   SettingsViolation,
 } from "@shared/settings/settings";
 
@@ -112,12 +114,24 @@ export interface AikaApi {
     kind: VideoKind,
   ): Promise<VideoCapabilityDescriptor | null>;
   getJob(id: string): Promise<Job | undefined>;
-  getSettings(): Promise<AppSettings>;
+  /**
+   * 読み取り失敗を例外にせず、正常 / 既定値復旧 / 読取不能を値で返す。
+   * 例外にすると main の起動処理や renderer の初期化が未処理の reject で
+   * 止まり、ウィンドウが開かないまま固まる (#31)。
+   */
+  getSettings(): Promise<LoadSettingsResult>;
   /**
    * 検証失敗は例外ではなく結果ユニオンで返す。generateText と同じ理由で、
    * IPC 越しでは Error の独自プロパティが失われ違反明細が届かないため。
+   *
+   * intent は既定値での上書きを伴う保存だけを区別する。省略時は "normal"。
+   * 既定値で開いている状態で "normal" の保存は、書込みに到達せず failed を返す
+   * (#32)。この判定は main が読み直して行い、renderer の申告は信用しない。
    */
-  saveSettings(patch: Partial<AppSettings>): Promise<SaveSettingsResult>;
+  saveSettings(
+    patch: Partial<AppSettings>,
+    intent?: SaveSettingsIntent,
+  ): Promise<SaveSettingsResult>;
   checkUpdate(): Promise<UpdateState>;
   /** 目標から計画を生成し、コーディングワークフローの状態を返す。 */
   planCode(goal: string): Promise<CodingView>;

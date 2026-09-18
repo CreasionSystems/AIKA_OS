@@ -23,7 +23,7 @@
       "option": { "system": "システム設定に従う", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "保存" },
-    "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "保存しました" },
+    "status": { "unsaved": "未保存", "saving": "保存中…", "saved": "保存しました", "label": "保存の状態" },
     "validation": {
       "invalidWritingMode": "未知の文章作成モードです: \"{{mode}}\"",
       "invalidTheme": "テーマは {{allowed}} のいずれかにしてください。",
@@ -31,7 +31,19 @@
       "invalidPollInterval": "メディア更新間隔は {{min}}〜{{max}} の整数にしてください。",
       "invalidLanguage": "表示言語は {{allowed}} のいずれかにしてください。"
     },
-    "error": { "saveFailed": "設定を保存できませんでした。" }
+    "error": { "saveFailed": "設定を保存できませんでした。" , "recoveryRequired": "設定が既定値で開かれているため、そのままでは保存できません。「既定値で復旧して保存」を使ってください。" },
+    "load": {
+      "unavailable": {
+        "permission": "設定ファイルを読み取る権限がありません。",
+        "notAFile": "設定ファイルの場所にフォルダがあります。",
+        "malformed": "設定ファイルの内容が壊れています。",
+        "io": "設定ファイルを読み取れませんでした。"
+      },
+      "status": { "label": "設定の読み込み状態", "unavailable": "読み込めません", "recovered": "既定値で開いています" },
+      "recovered": { "title": "既定値で開いた項目", "applyDefaults": "既定値で復旧して保存" },
+      "fallback": { "invalid": "{{item}} の値が壊れていたため、既定値で開いています。" },
+      "retry": "再読み込み"
+    }
   },
   "media": {
     "validation": { "unsupportedKind": "この種別に対応するテンプレートがありません", "summary": "入力に問題があります", "missingPrompt": "内容を入力してください", "forbiddenPrompt": "この種別では内容を指定できません", "missingParameter": "未入力の項目があります", "invalidDuration": "長さは正の数で指定してください", "invalidFps": "fps は正の整数で指定してください", "invalidMotionStrength": "モーション強度は 0.0〜1.0 で指定してください", "invalidResolution": "解像度の指定が不正です", "invalidQualityPreset": "品質の指定が不正です", "fpsNotAllowed": "この fps は使用できません", "durationNotAllowed": "この長さは使用できません", "resolutionNotSupported": "この解像度は使用できません", "qualityNotSupported": "この品質は使用できません", "unsupportedCombination": "解像度と品質の組み合わせが使用できません", "frameConstraint": "長さと fps の組み合わせが使用できません", "frameNotInteger": "長さ × fps が整数フレームになりません", "invalidAsset": "ファイルのパスが不正です", "assetCount": "必要なファイルが揃っていません" },

@@ -142,8 +142,14 @@ export function MediaPanel({
     if (pollInterval !== undefined) return;
     void getAikaApi()
       .getSettings()
-      .then((s) => {
-        if (mounted.current && s) setPollMs(s.mediaPollIntervalMs);
+      .then((res) => {
+        // 設定を読めなければ既定の周期で続行する。UI は壊さない。
+        if (mounted.current && res.status !== "unavailable") {
+          setPollMs(res.settings.mediaPollIntervalMs);
+        }
+      })
+      .catch(() => {
+        // 既定の周期のまま続行する。
       });
   }, [pollInterval]);
 

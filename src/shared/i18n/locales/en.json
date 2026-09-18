@@ -23,7 +23,7 @@
       "option": { "system": "Follow system setting", "ja": "日本語", "en": "English", "ko": "한국어", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "fr": "Français" }
     },
     "action": { "save": "Save" },
-    "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved" },
+    "status": { "unsaved": "Not saved", "saving": "Saving…", "saved": "Saved", "label": "Save state" },
     "validation": {
       "invalidWritingMode": "Unknown writing mode: \"{{mode}}\"",
       "invalidTheme": "Theme must be one of {{allowed}}.",
@@ -31,7 +31,19 @@
       "invalidPollInterval": "The media poll interval must be an integer between {{min}} and {{max}}.",
       "invalidLanguage": "The display language must be one of {{allowed}}."
     },
-    "error": { "saveFailed": "Could not save the settings." }
+    "error": { "saveFailed": "Could not save the settings." , "recoveryRequired": "The settings were opened with defaults, so they cannot be saved as-is. Use “Restore defaults and save”." },
+    "load": {
+      "unavailable": {
+        "permission": "No permission to read the settings file.",
+        "notAFile": "A folder exists where the settings file should be.",
+        "malformed": "The settings file is corrupted.",
+        "io": "Could not read the settings file."
+      },
+      "status": { "label": "Settings load state", "unavailable": "Cannot load", "recovered": "Opened with defaults" },
+      "recovered": { "title": "Items opened with defaults", "applyDefaults": "Restore defaults and save" },
+      "fallback": { "invalid": "{{item}} was corrupted, so it was opened with the default value." },
+      "retry": "Reload"
+    }
   },
   "media": {
     "validation": { "unsupportedKind": "No template is available for this kind", "summary": "There is a problem with the input", "missingPrompt": "Enter the content", "forbiddenPrompt": "Content cannot be set for this kind", "missingParameter": "Some fields are empty", "invalidDuration": "Length must be a positive number", "invalidFps": "fps must be a positive integer", "invalidMotionStrength": "Motion strength must be between 0.0 and 1.0", "invalidResolution": "Invalid resolution", "invalidQualityPreset": "Invalid quality", "fpsNotAllowed": "This fps is not available", "durationNotAllowed": "This length is not available", "resolutionNotSupported": "This resolution is not available", "qualityNotSupported": "This quality is not available", "unsupportedCombination": "This resolution and quality cannot be combined", "frameConstraint": "This length and fps cannot be combined", "frameNotInteger": "Length x fps does not yield whole frames", "invalidAsset": "Invalid file path", "assetCount": "Required files are missing" },
