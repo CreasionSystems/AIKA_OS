@@ -1,18 +1,11 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { test, expect } from "./fixtures";
 
 /**
  * メディアタブの最小 E2E: タブ -> 画像ジョブ投入 -> 自動ポーリングで完了 + 生成物表示。
  * main は DummyInferenceAdapter を結線しており、/var/lib/aika/artifacts/... を返す。
  */
-test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
@@ -42,10 +35,8 @@ test("media: タブ -> 投入 -> 自動ポーリングで完了 + 生成物", as
   await app.close();
 });
 
-test("media(video): 自由指示 -> 補足質問 -> 最終確認 -> 送信 (t2v)", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("media(video): 自由指示 -> 補足質問 -> 最終確認 -> 送信 (t2v)", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
@@ -76,10 +67,8 @@ test("media(video): 自由指示 -> 補足質問 -> 最終確認 -> 送信 (t2v)
   await app.close();
 });
 
-test("media(video): i2v は十分な指示 + 元画像入力 -> 送信 -> 自動完了", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("media(video): i2v は十分な指示 + 元画像入力 -> 送信 -> 自動完了", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });
@@ -106,10 +95,8 @@ test("media(video): i2v は十分な指示 + 元画像入力 -> 送信 -> 自動
  * 再現できないため、ここでは通常 Enter と Shift+Enter の契約だけを見る。
  * IME ガード自体は composerKeyboard.test.tsx のユニットテストで固定している。
  */
-test("media(video): 指示入力の Enter で送信、Shift+Enter は改行", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("media(video): 指示入力の Enter で送信、Shift+Enter は改行", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "メディア" }).click({ timeout: 15_000 });

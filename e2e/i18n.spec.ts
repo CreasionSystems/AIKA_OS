@@ -1,9 +1,4 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { test, expect, type LaunchApp } from "./fixtures";
 
 /**
  * i18n の最小 E2E: 設定で言語を English に切り替えると、ナビ / Media タブの
@@ -13,10 +8,8 @@ const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
  * 伸びても崩れないよう固定幅前提を避けている (レイアウトは flex ベース)。
  * ここでは切替が反映されることを主に固定する。
  */
-test("i18n: 設定で言語切替 -> ナビ / Media が選択言語になる", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("i18n: 設定で言語切替 -> ナビ / Media が選択言語になる", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   // 既定は日本語。設定タブへ。
@@ -51,10 +44,8 @@ test("i18n: 設定で言語切替 -> ナビ / Media が選択言語になる", a
  * フランス語切替: 文言が最も伸びる言語で主要導線が表示され、
  * 動画種別ラベルも実訳されることを固定する。
  */
-test("i18n: 設定で言語切替 -> French (動画種別も実訳)", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("i18n: 設定で言語切替 -> French (動画種別も実訳)", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -93,6 +84,7 @@ test("i18n: 設定で言語切替 -> French (動画種別も実訳)", async () =
  * 計画手順数は DummyInferenceAdapter 固定の 3 手順 (plural: other)。
  */
 async function walkPanels(
+  launchApp: LaunchApp,
   lang: "en" | "fr",
   labels: {
     writingTab: string;
@@ -108,9 +100,7 @@ async function walkPanels(
     planned: string;
   },
 ) {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -142,8 +132,10 @@ async function walkPanels(
   await app.close();
 }
 
-test("i18n(en): Writing / Update / Coding の主要操作 + status", async () => {
-  await walkPanels("en", {
+test("i18n(en): Writing / Update / Coding の主要操作 + status", async ({
+  launchApp,
+}) => {
+  await walkPanels(launchApp, "en", {
     writingTab: "Writing",
     prompt: "Prompt",
     generate: "Generate",
@@ -158,8 +150,10 @@ test("i18n(en): Writing / Update / Coding の主要操作 + status", async () =>
   });
 });
 
-test("i18n(fr): Writing / Update / Coding の主要操作 + status (文言伸長)", async () => {
-  await walkPanels("fr", {
+test("i18n(fr): Writing / Update / Coding の主要操作 + status (文言伸長)", async ({
+  launchApp,
+}) => {
+  await walkPanels(launchApp, "fr", {
     writingTab: "Rédaction",
     prompt: "Invite",
     generate: "Générer",

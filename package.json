@@ -13,7 +13,7 @@
     "build": "node scripts/build.mjs",
     "provision:electron": "node scripts/fetch-electron.mjs",
     "start": "npm run build && electron .",
-    "e2e": "npm run build && xvfb-run -a playwright test"
+    "e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "i18next": "^23.16.8",

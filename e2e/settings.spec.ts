@@ -1,18 +1,11 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { test, expect } from "./fixtures";
 
 /**
  * 設定の最小 E2E: window.aika 越しに getSettings / saveSettings の往復が
  * 実 FileSettingsStore (userData) で通ること。
  */
-test("settings: getSettings -> saveSettings -> getSettings 往復", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("settings: getSettings -> saveSettings -> getSettings 往復", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
   // シェルの設定タブへ切り替えてからパネルを確認する。
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -49,10 +42,8 @@ test("settings: getSettings -> saveSettings -> getSettings 往復", async () => 
  * 数値欄を空にすると valueAsNumber が NaN になり、main の validateSettings が
  * INVALID_JOB_HISTORY_LIMIT を返すため、テスト専用の注入口なしで到達できる。
  */
-test("settings: 数値欄を空にして保存 -> ローカライズ済みの入力エラー", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("settings: 数値欄を空にして保存 -> ローカライズ済みの入力エラー", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
