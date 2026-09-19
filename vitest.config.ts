@@ -16,9 +16,27 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: "node",
-    environmentMatchGlobs: [["**/*.test.tsx", "jsdom"]],
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // 実行環境は拡張子で分ける: .ts (main / shared / preload) は node、
+    // .tsx (renderer) は jsdom。Vitest 4 で environmentMatchGlobs が廃止されたため
+    // projects で表す。extends: true で上の plugins / alias / globals を引き継ぐ。
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "node",
+          environment: "node",
+          include: ["src/**/*.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "jsdom",
+          environment: "jsdom",
+          include: ["src/**/*.test.tsx"],
+        },
+      },
+    ],
   },
 });
