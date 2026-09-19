@@ -1,11 +1,5 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import { mkdtemp, writeFile, readFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { readFile } from "node:fs/promises";
+import { test, expect } from "./fixtures";
 
 /**
  * 設定の読み込み失敗 E2E (#31 / #32)。
@@ -13,30 +7,14 @@ const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
  * ユニットテストは window.aika を差し替えるため IPC 境界も main の起動処理も
  * 通らない。ここでは実アプリを起動して確認する。
  *
- * 破損した設定を仕込むため --user-data-dir で隔離する。これは Chromium 標準の
- * スイッチで、アプリ側にテスト専用の注入口・環境変数・IPC channel は要らない。
- * 実ユーザーデータには一切触れない。
+ * 破損した設定は launchApp の settings で隔離ディレクトリに仕込む
+ * (fixtures.ts)。実ユーザーデータには一切触れない。
  */
-async function launchWithSettings(body: string) {
-  const userDataDir = await mkdtemp(path.join(os.tmpdir(), "aika-e2e-"));
-  const settingsFile = path.join(userDataDir, "settings.json");
-  await writeFile(settingsFile, body, "utf-8");
-  const app = await electron.launch({
-    args: [
-      mainEntry,
-      `--user-data-dir=${userDataDir}`,
-      "--no-sandbox",
-      "--disable-gpu",
-      "--lang=ja",
-    ],
-  });
-  return { app, settingsFile };
-}
 
-test("settings(load): 設定ファイルが壊れていてもウィンドウが開く", async () => {
+test("settings(load): 設定ファイルが壊れていてもウィンドウが開く", async ({ launchApp }) => {
   // 以前はここで main の await settingsService.load() が未処理の reject になり、
   // createMainWindow() へ到達せずウィンドウが一度も開かなかった。
-  const { app } = await launchWithSettings('{ "theme": "dark", ');
+  const { app } = await launchApp({ settings: '{ "theme": "dark", ' });
   const page = await app.firstWindow();
 
   await expect(page.getByRole("heading", { name: "文章作成" })).toBeVisible({
@@ -54,9 +32,9 @@ test("settings(load): 設定ファイルが壊れていてもウィンドウが�
   await app.close();
 });
 
-test("settings(load): 壊れた設定は保存操作なしに上書きされない", async () => {
+test("settings(load): 壊れた設定は保存操作なしに上書きされない", async ({ launchApp }) => {
   const broken = '{ "theme": "dark", ';
-  const { app, settingsFile } = await launchWithSettings(broken);
+  const { app, settingsFile } = await launchApp({ settings: broken });
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -70,12 +48,12 @@ test("settings(load): 壊れた設定は保存操作なしに上書きされな�
   expect(await readFile(settingsFile, "utf-8")).toBe(broken);
 });
 
-test("settings(load): 値が壊れていれば既定値で開いたことを示す", async () => {
+test("settings(load): 値が壊れていれば既定値で開いたことを示す", async ({ launchApp }) => {
   // JSON としては読めるが値が不正。以前は無言で既定値化され、次回保存で
   // 元の内容が失われていた。
-  const { app } = await launchWithSettings(
-    JSON.stringify({ theme: "neon", jobHistoryLimit: -5 }),
-  );
+  const { app } = await launchApp({
+    settings: JSON.stringify({ theme: "neon", jobHistoryLimit: -5 }),
+  });
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -91,10 +69,10 @@ test("settings(load): 値が壊れていれば既定値で開いたことを示�
   await app.close();
 });
 
-test("settings(load): 確認操作前は通常保存できず、確認操作後は保存できる", async () => {
+test("settings(load): 確認操作前は通常保存できず、確認操作後は保存できる", async ({ launchApp }) => {
   // JSON としては読めるが値が不正。既定値で開いた状態になる。
   const original = JSON.stringify({ theme: "neon", jobHistoryLimit: -5 });
-  const { app, settingsFile } = await launchWithSettings(original);
+  const { app, settingsFile } = await launchApp({ settings: original });
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });

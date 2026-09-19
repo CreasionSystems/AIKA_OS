@@ -1,9 +1,4 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { test, expect } from "./fixtures";
 
 /**
  * 文章作成の検証エラー E2E (Issue #24)。
@@ -15,10 +10,8 @@ const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
  * 空プロンプトで送信すると main の validateWritingRequest が EMPTY_PROMPT を
  * 返すため、テスト専用の注入口なしで到達できる。
  */
-test("writing: 空プロンプトで送信 -> ローカライズ済みの入力エラー", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("writing: 空プロンプトで送信 -> ローカライズ済みの入力エラー", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "文章作成" }).click({ timeout: 15_000 });

@@ -1,59 +1,22 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import {
-  chmod,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { chmod, readdir, readFile } from "node:fs/promises";
+import { test, expect } from "./fixtures";
 
 /**
  * 設定の保存の保全 E2E (#33)。
  *
  * 実アプリで UI から保存し、ディスク上の結果を確かめる。
- * --user-data-dir で隔離するため実ユーザーデータには触れず、アプリ側に
- * テスト専用の注入口・環境変数・IPC channel も追加していない。
+ * userData は launchApp が隔離し、読取専用にしたファイルも含めて片付ける
+ * (fixtures.ts)。実ユーザーデータには触れず、アプリ側にテスト専用の注入口・
+ * 環境変数・IPC channel も追加していない。
  */
-const created: string[] = [];
-
-test.afterEach(async () => {
-  for (const dir of created.splice(0)) {
-    await chmod(path.join(dir, "settings.json"), 0o644).catch(() => {});
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-async function launchWithSettings(body: string) {
-  const userDataDir = await mkdtemp(path.join(os.tmpdir(), "aika-e2e-"));
-  created.push(userDataDir);
-  const settingsFile = path.join(userDataDir, "settings.json");
-  await writeFile(settingsFile, body, "utf-8");
-  const app = await electron.launch({
-    args: [
-      mainEntry,
-      `--user-data-dir=${userDataDir}`,
-      "--no-sandbox",
-      "--disable-gpu",
-      "--lang=ja",
-    ],
-  });
-  return { app, userDataDir, settingsFile };
-}
 
 async function tempsIn(dir: string): Promise<string[]> {
   return (await readdir(dir)).filter((n) => n.startsWith("settings.json.") && n.endsWith(".tmp"));
 }
 
-test("settings(persist): 保存すると直前の内容が .bak に残り、一時ファイルは残らない", async () => {
+test("settings(persist): 保存すると直前の内容が .bak に残り、一時ファイルは残らない", async ({ launchApp }) => {
   const original = JSON.stringify({ theme: "dark" });
-  const { app, userDataDir, settingsFile } = await launchWithSettings(original);
+  const { app, userDataDir, settingsFile } = await launchApp({ settings: original });
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -69,10 +32,10 @@ test("settings(persist): 保存すると直前の内容が .bak に残り、一�
   expect(await tempsIn(userDataDir)).toEqual([]);
 });
 
-test("settings(persist): 既定値で復旧して保存すると、壊れていた元の内容が .bak に残る", async () => {
+test("settings(persist): 既定値で復旧して保存すると、壊れていた元の内容が .bak に残る", async ({ launchApp }) => {
   // #32 の復旧保存で失われる元の値を、1世代だけでも退避できていること。
   const broken = JSON.stringify({ theme: "neon", jobHistoryLimit: -5 });
-  const { app, settingsFile } = await launchWithSettings(broken);
+  const { app, settingsFile } = await launchApp({ settings: broken });
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "設定" }).click({ timeout: 15_000 });
@@ -90,9 +53,9 @@ test("settings(persist): 既定値で復旧して保存すると、壊れてい�
   );
 });
 
-test("settings(persist): 読取専用の設定ファイルは上書きせず、内部情報なしで失敗を示す", async () => {
+test("settings(persist): 読取専用の設定ファイルは上書きせず、内部情報なしで失敗を示す", async ({ launchApp }) => {
   const original = JSON.stringify({ theme: "dark" });
-  const { app, userDataDir, settingsFile } = await launchWithSettings(original);
+  const { app, userDataDir, settingsFile } = await launchApp({ settings: original });
   await chmod(settingsFile, 0o444);
   const page = await app.firstWindow();
 

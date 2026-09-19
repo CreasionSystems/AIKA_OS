@@ -1,18 +1,11 @@
-import { test, expect, _electron as electron } from "@playwright/test";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const mainEntry = path.join(here, "..", "dist", "main", "index.cjs");
+import { test, expect } from "./fixtures";
 
 /**
  * 更新タブの最小 E2E: タブ切替 -> 確認 -> 状態表示。
  * main は Fake チェッカ (最新) を結線しているため up-to-date を表示する。
  */
-test("update: タブ -> 確認 -> 最新表示", async () => {
-  const app = await electron.launch({
-    args: [mainEntry, "--no-sandbox", "--disable-gpu", "--lang=ja"],
-  });
+test("update: タブ -> 確認 -> 最新表示", async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
 
   await page.getByRole("tab", { name: "更新" }).click({ timeout: 15_000 });

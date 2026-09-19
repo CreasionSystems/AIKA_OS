@@ -33,8 +33,10 @@ jobs:
           npx playwright install-deps
           sudo apt-get install -y xvfb
 
+      # The e2e script is OS-neutral. Only Linux lacks a display, so only this
+      # step wraps it in Xvfb; macOS and Windows run `npm run e2e` as is.
       - name: E2E tests (Electron under Xvfb)
-        run: npm run e2e
+        run: xvfb-run -a npm run e2e
 
       # Accessibility checks (axe-core, unit level). Separate step so it gates
       # independently; can be extended to an axe-core E2E pass later.
