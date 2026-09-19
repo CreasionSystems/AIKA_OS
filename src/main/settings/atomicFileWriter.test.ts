@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
 import * as nodeFs from "node:fs/promises";
 import {
+  accessSync,
   chmodSync,
+  constants,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -150,8 +152,23 @@ describe("writeFileAtomic: バックアップ", () => {
   });
 });
 
+/**
+ * Windows には POSIX の mode が無い。chmod は読取専用属性を切り替えるだけで、
+ * ディレクトリの読取専用属性は中にファイルを作ることを防がない (#36)。
+ * これに依存する検査は POSIX でだけ実行し、期待する skip は
+ * scripts/expected-skips.json に載せる。
+ */
+const onWindows = process.platform === "win32";
+
+/**
+ * 読取専用のファイルへの保存が返すコード。
+ * Windows では読取専用属性が EPERM として返ることがある。
+ */
+const READ_ONLY_CODES = onWindows ? ["EPERM", "EACCES"] : ["EACCES"];
+
 describe("writeFileAtomic: 既存ファイルの権限", () => {
-  it("既存の mode を引き継ぐ (0600 のまま)", async () => {
+  // Windows: mode が無い。
+  it.skipIf(onWindows)("既存の mode を引き継ぐ (0600 のまま)", async () => {
     const file = path.join(tmpDir(), "settings.json");
     writeFileSync(file, "OLD");
     chmodSync(file, 0o600);
@@ -159,7 +176,8 @@ describe("writeFileAtomic: 既存ファイルの権限", () => {
     expect(modeOf(file)).toBe(0o600);
   });
 
-  it("umask より広い mode も正確に引き継ぐ", async () => {
+  // Windows: mode が無い。
+  it.skipIf(onWindows)("umask より広い mode も正確に引き継ぐ", async () => {
     const file = path.join(tmpDir(), "settings.json");
     writeFileSync(file, "OLD");
     chmodSync(file, 0o664);
@@ -174,9 +192,13 @@ describe("writeFileAtomic: 既存ファイルの権限", () => {
     writeFileSync(`${file}.bak`, "PREV");
     chmodSync(file, 0o444);
 
-    await expect(
-      writeFileAtomic(file, "NEW", { backupPath: `${file}.bak` }),
-    ).rejects.toMatchObject({ code: "EACCES" });
+    const err = await writeFileAtomic(file, "NEW", {
+      backupPath: `${file}.bak`,
+    }).then(
+      () => undefined,
+      (e: unknown) => e as NodeJS.ErrnoException,
+    );
+    expect(READ_ONLY_CODES).toContain(err?.code);
 
     // rename はディレクトリの権限しか見ないので、確認しないと置き換わってしまう。
     expect(readFileSync(file, "utf-8")).toBe("OLD");
@@ -184,7 +206,17 @@ describe("writeFileAtomic: 既存ファイルの権限", () => {
     expect(tempsIn(dir)).toEqual([]);
   });
 
-  it("ディレクトリが書込み不可なら失敗し、対象は無傷", async () => {
+  it("既存ファイルが書き込めるなら、保存後も書き込めるまま (読取専用にならない)", async () => {
+    // mode の引き継ぎ (上の2件) が Windows で守っている性質に相当する。全 OS で実行する。
+    const file = path.join(tmpDir(), "settings.json");
+    writeFileSync(file, "OLD");
+    await writeFileAtomic(file, "NEW");
+    expect(() => accessSync(file, constants.W_OK)).not.toThrow();
+    expect(readFileSync(file, "utf-8")).toBe("NEW");
+  });
+
+  // Windows: ディレクトリの読取専用属性はファイルの作成を防がない。
+  it.skipIf(onWindows)("ディレクトリが書込み不可なら失敗し、対象は無傷", async () => {
     const dir = path.join(tmpDir(), "ro");
     mkdirSync(dir);
     const file = path.join(dir, "settings.json");

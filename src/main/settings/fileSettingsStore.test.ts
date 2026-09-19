@@ -32,6 +32,16 @@ afterEach(() => {
   }
 });
 
+/**
+ * Windows には POSIX の mode が無く、chmod は読取専用属性を切り替えるだけ (#36)。
+ * これに依存する検査は POSIX でだけ実行し、期待する skip は
+ * scripts/expected-skips.json に載せる。
+ */
+const onWindows = process.platform === "win32";
+
+/** 読取専用のファイルへの保存が返すコード。Windows では EPERM のことがある。 */
+const READ_ONLY_CODES = onWindows ? ["EPERM", "EACCES"] : ["EACCES"];
+
 describe("FileSettingsStore", () => {
   it("未作成ファイルの read は missing (初回起動)", async () => {
     const store = new FileSettingsStore(tmpFile());
@@ -56,7 +66,8 @@ describe("FileSettingsStore", () => {
  * ウィンドウが開かなくなる。値として分類して返す。
  */
 describe("FileSettingsStore: 読み取り失敗の分類", () => {
-  it("権限がなければ permission", async () => {
+  // Windows: chmod 0o000 では読み取りを防げない。
+  it.skipIf(onWindows)("権限がなければ permission", async () => {
     const file = tmpFile();
     writeFileSync(file, JSON.stringify(DEFAULT_SETTINGS), "utf-8");
     chmodSync(file, 0o000);
@@ -153,16 +164,21 @@ describe("FileSettingsStore: 書込みの保全", () => {
     const file = tmpFile();
     writeFileSync(file, JSON.stringify(DEFAULT_SETTINGS), "utf-8");
     chmodSync(file, 0o444);
-    await expect(
-      new FileSettingsStore(file).write({ ...DEFAULT_SETTINGS, theme: "dark" }),
-    ).rejects.toMatchObject({ code: "EACCES" });
+    const err = await new FileSettingsStore(file)
+      .write({ ...DEFAULT_SETTINGS, theme: "dark" })
+      .then(
+        () => undefined,
+        (e: unknown) => e as NodeJS.ErrnoException,
+      );
     chmodSync(file, 0o644);
+    expect(READ_ONLY_CODES).toContain(err?.code);
     expect(JSON.parse(readFileSync(file, "utf-8")).theme).toBe(
       DEFAULT_SETTINGS.theme,
     );
   });
 
-  it("既存ファイルの権限を変えない", async () => {
+  // Windows: mode が無い。
+  it.skipIf(onWindows)("既存ファイルの権限を変えない", async () => {
     const file = tmpFile();
     writeFileSync(file, JSON.stringify(DEFAULT_SETTINGS), "utf-8");
     chmodSync(file, 0o600);

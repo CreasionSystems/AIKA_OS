@@ -301,3 +301,19 @@ test("isolation: 通常に閉じた成功テストは、診断用のファイル
   expect(existsSync(dir)).toBe(false);
   expect(existsSync(testInfo.outputPath("teardown"))).toBe(false);
 });
+
+test("isolation: macOS の再開確認を抑える引数は、macOS で起動したときだけ Electron に渡る", async ({
+  launchApp,
+}) => {
+  // 上の検査は OS を引数で与えている。ここでは各 OS のランナーで実際に起動し、
+  // Electron の main が受け取った引数を見る (#36)。
+  const { app } = await launchApp();
+  await waitUntilOpen(app);
+
+  const argv = await app.evaluate(() => process.argv);
+  expect(argv.includes("-ApplePersistenceIgnoreState")).toBe(
+    process.platform === "darwin",
+  );
+
+  await app.close();
+});
