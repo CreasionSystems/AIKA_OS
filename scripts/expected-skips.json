@@ -1,0 +1,18 @@
+{
+  "unit": {
+    "linux": [],
+    "darwin": [],
+    "win32": [
+      "src/main/settings/atomicFileWriter.test.ts > writeFileAtomic: 既存ファイルの権限 > 既存の mode を引き継ぐ (0600 のまま)",
+      "src/main/settings/atomicFileWriter.test.ts > writeFileAtomic: 既存ファイルの権限 > umask より広い mode も正確に引き継ぐ",
+      "src/main/settings/atomicFileWriter.test.ts > writeFileAtomic: 既存ファイルの権限 > ディレクトリが書込み不可なら失敗し、対象は無傷",
+      "src/main/settings/fileSettingsStore.test.ts > FileSettingsStore: 読み取り失敗の分類 > 権限がなければ permission",
+      "src/main/settings/fileSettingsStore.test.ts > FileSettingsStore: 書込みの保全 > 既存ファイルの権限を変えない"
+    ]
+  },
+  "e2e": {
+    "linux": [],
+    "darwin": [],
+    "win32": []
+  }
+}

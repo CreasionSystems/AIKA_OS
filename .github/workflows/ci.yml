@@ -5,9 +5,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  # Linux is the source of truth for typecheck, build and a11y. The other OSes
+  # only rerun what depends on the OS: unit tests (file system semantics) and
+  # E2E (launching and closing the real Electron app).
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +32,7 @@ jobs:
         run: npm run typecheck
 
       - name: Unit tests
-        run: npm test
+        run: npm test -- --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
 
       # System libraries Electron/Chromium need to launch under Xvfb.
       - name: Install Electron/Playwright system deps
@@ -36,9 +43,77 @@ jobs:
       # The e2e script is OS-neutral. Only Linux lacks a display, so only this
       # step wraps it in Xvfb; macOS and Windows run `npm run e2e` as is.
       - name: E2E tests (Electron under Xvfb)
-        run: xvfb-run -a npm run e2e
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/playwright.json
+        run: xvfb-run -a npm run e2e -- --reporter=line,json
 
       # Accessibility checks (axe-core, unit level). Separate step so it gates
       # independently; can be extended to an axe-core E2E pass later.
       - name: Accessibility checks
         run: npm run test:a11y
+
+      # Skipped tests must match scripts/expected-skips.json exactly.
+      - name: Skips match the expected list
+        if: ${{ !cancelled() }}
+        run: node scripts/check-skips.mjs --vitest "$RUNNER_TEMP/vitest.json" --playwright "$RUNNER_TEMP/playwright.json"
+
+      - name: Upload diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics-linux
+          path: |
+            test-results/
+            ${{ runner.temp }}/vitest.json
+            ${{ runner.temp }}/playwright.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-os:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        # One shell everywhere. PowerShell's npm shim can swallow the `--` that
+        # passes reporter flags through `npm test` / `npm run e2e`.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test -- --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+
+      # Run E2E even if unit tests failed, so one run shows both results.
+      - name: E2E tests
+        if: ${{ !cancelled() }}
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/playwright.json
+        run: npm run e2e -- --reporter=line,json
+
+      - name: Skips match the expected list
+        if: ${{ !cancelled() }}
+        run: node scripts/check-skips.mjs --vitest "$RUNNER_TEMP/vitest.json" --playwright "$RUNNER_TEMP/playwright.json"
+
+      - name: Upload diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics-${{ matrix.os }}
+          path: |
+            test-results/
+            ${{ runner.temp }}/vitest.json
+            ${{ runner.temp }}/playwright.json
+          retention-days: 7
+          if-no-files-found: ignore
